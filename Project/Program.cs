@@ -13,3 +13,12 @@ foreach (BallPark park in registry.All())
     Console.WriteLine($"{park.Name} - {park.Team} - holds {park.Capacity:n0}");
 }
 
+Console.WriteLine();
+
+// One I know is on the registry.
+BallPark? known = registry.Find("Oracle Park");
+Console.WriteLine(known == null ? "Nothing on file by that name." : "Found it.");
+
+// And one nobody has ever heard of.
+BallPark? missing = registry.Find("Google Park");
+Console.WriteLine(missing == null ? "Nothing on file by that name." : "...found something that shouldn't be there.");

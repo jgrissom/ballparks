@@ -18,4 +18,17 @@ public class Registry
     {
         return new List<BallPark>(_ballParks);      // ← a COPY
     }
+
+    public BallPark? Find(string name)
+    {
+        foreach (BallPark ballPark in _ballParks)
+        {
+            if (ballPark.Name == name)
+            {
+                return ballPark;
+            }
+        }
+
+        return null;
+    }
 }
