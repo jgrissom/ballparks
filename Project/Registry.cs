@@ -31,4 +31,17 @@ public class Registry
 
         return null;
     }
+
+    public bool Remove(string name)
+    {
+        BallPark? found = Find(name);
+
+        if (found == null)
+        {
+            return false;
+        }
+
+        _ballParks.Remove(found);
+        return true;
+    }
 }
