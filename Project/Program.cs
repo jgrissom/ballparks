@@ -28,3 +28,10 @@ Console.WriteLine(registry.Remove("Oracle Park")
     ? "Removed."
     : "Nothing by that name.");
 Console.WriteLine($"{registry.Count} on file.");
+
+Console.WriteLine();
+
+foreach (BallPark park in registry.All())
+{
+    Console.WriteLine($"{park.Kind,-12}{park.Line()}");
+}

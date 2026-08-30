@@ -1,4 +1,4 @@
-public class BallPark
+public class BallPark : IListed
 {
     private string _name = "unknown";
     public string Name                               // rule → explicit field
@@ -31,4 +31,8 @@ public class BallPark
         Team = team;
         Capacity = capacity;
     }
+
+    public string Kind => "BALLPARK";
+
+    public string Line() => $"{Name} - {Team} - visits {GamesSeen}";
 }
