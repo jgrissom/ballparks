@@ -35,3 +35,5 @@ foreach (BallPark park in registry.All())
 {
     Console.WriteLine($"{park.Kind,-12}{park.Line()}");
 }
+
+Console.WriteLine($"{registry.Kind,-12}{registry.Line()}");
