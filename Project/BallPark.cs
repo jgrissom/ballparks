@@ -17,12 +17,12 @@ public class BallPark : IListed
     }
 
     public int GamesSeen { get; private set; }         // read by all, moved by Visit only
-    public DateOnly? LastVisit { get; private set; }
+    // public DateOnly? LastVisit { get; private set; }
 
-    public void Visit(DateOnly when)
+    public void Visit()
     {
         GamesSeen++;
-        LastVisit = when;
+        // LastVisit = when;
     }
 
     public BallPark(string name, string team = "unknown", int capacity = 0)
