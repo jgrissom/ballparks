@@ -15,14 +15,15 @@
 //  That is the whole trick, and it is why NewItem has to be there even
 //  though your program barely uses it. It is the door.
 //
-//  ⚠️ NEW THIS WEEK, and it is the only thing added to the contract:
-//  Registry.Find(string) — which hands back one of your records, or null.
-//  Everything else is unchanged from week 4.
+//  ⚠️ NEW THIS WEEK, and it is all that was added to the contract:
+//  an interface called IListed with Kind and Line() on it, kept by your
+//  record AND by Registry itself, plus Registry.Everything() which hands
+//  back one list holding both. Everything else is unchanged.
 //
-//  Nothing in here looks for a method by name on YOUR record. Week 5 asks
-//  your record to DO something, and what you called that something is
-//  entirely up to you — so the checks try every public method your record
-//  has and watch what moves.
+//  Nothing in here looks for a method by name on YOUR record, and nothing
+//  reads a word of what your Kind or your Line() actually SAY. They ask
+//  whether the promise is kept — which is the only question an interface
+//  ever asks about anything.
 //
 //  The actual checks are in ProjectChecks.cs next door.
 // ═══════════════════════════════════════════════════════════════════
@@ -350,5 +351,126 @@ internal static class StudentCode
             if (WhatItMoves(fresh, verb).Length > 0) return verb;
         }
         return null;
+    }
+
+    // ── week 6 ─────────────────────────────────────────────────────────────
+
+    internal const string ListedHint =
+        "The homework asks for an interface called IListed — the second thing in this\n"
+        + "course whose shape is not up to you:\n"
+        + "    public interface IListed\n"
+        + "    {\n"
+        + "        string Kind { get; }\n"
+        + "        string Line();\n"
+        + "    }\n"
+        + "Put it in Project/IListed.cs. It is not a class and there is nothing in it\n"
+        + "to make — it is a list of what a thing has to be able to answer.\n";
+
+    internal static Type ListedType()
+    {
+        var type = TheProject.GetTypes().FirstOrDefault(t => t.Name == "IListed");
+
+        Assert.True(type != null,
+            "I can't find anything called IListed in your Project.\n"
+            + ListedHint
+            + "Spelling and capitals matter for this one name — IListed, exactly, capital I.\n"
+            + "👉 Next: make Project/IListed.cs.");
+
+        Assert.True(type!.IsInterface,
+            $"IListed exists, but it is a {(type.IsClass ? "class" : "type")} rather than an "
+            + "interface.\n"
+            + ListedHint
+            + "The word is `interface`, not `class`. A class says what something IS and can "
+            + "be made with `new`; an interface says only what something can ANSWER, and "
+            + "there is never anything to make.");
+
+        Assert.True(type.IsPublic,
+            "IListed isn't public, so nothing outside your program can see it — including "
+            + "these checks.\n    public interface IListed");
+
+        var kind = type.GetProperty("Kind");
+        Assert.True(kind != null && kind.PropertyType == typeof(string) && kind.CanRead,
+            "IListed has no readable string property called Kind.\n"
+            + ListedHint
+            + "Kind is the one word in the left-hand column of your listing. A payphone "
+            + "says PAYPHONE; the registry itself says REGISTRY.");
+
+        var line = type.GetMethod("Line");
+        Assert.True(line != null
+                    && line.ReturnType == typeof(string)
+                    && line.GetParameters().Length == 0,
+            "IListed has no method `string Line()` that takes nothing.\n"
+            + ListedHint
+            + "Line() is the rest of the row, and it is the part each kind of thing writes "
+            + "for itself.");
+
+        return type;
+    }
+
+    internal static string KindOf(object thing)
+    {
+        var value = ListedType().GetProperty("Kind")!.GetValue(thing);
+
+        Assert.True(value is string,
+            $"{thing.GetType().Name}.Kind handed back {(value == null ? "null" : "something that isn't a string")}. "
+            + "It is one word for the left-hand column:\n"
+            + "    public string Kind => \"PAYPHONE\";");
+
+        return (string)value!;
+    }
+
+    internal static string LineOf(object thing)
+    {
+        object? value;
+        try
+        {
+            value = ListedType().GetMethod("Line")!.Invoke(thing, null);
+        }
+        catch (TargetInvocationException e) when (e.InnerException != null)
+        {
+            throw new Xunit.Sdk.XunitException(
+                $"{thing.GetType().Name}.Line() threw {e.InnerException.GetType().Name}:\n"
+                + $"    {e.InnerException.Message}\n"
+                + "Line() has to work on an ordinary record with ordinary values in it.");
+        }
+
+        Assert.True(value is string,
+            $"{thing.GetType().Name}.Line() handed back "
+            + $"{(value == null ? "null" : "something that isn't a string")}.");
+
+        return (string)value!;
+    }
+
+    internal static bool Keeps(Type type) => ListedType().IsAssignableFrom(type);
+
+    internal static System.Collections.IList Everything(object registry)
+    {
+        var method = RequireMethod("Everything");
+        var wanted = typeof(List<>).MakeGenericType(ListedType());
+
+        Assert.True(method.ReturnType == wanted,
+            $"Registry.Everything() hands back a {method.ReturnType.Name}, and it has to hand "
+            + "back a list of the promise:\n"
+            + "    public List<IListed> Everything()\n"
+            + "That type in the angle brackets is the whole point. A List<IListed> will hold "
+            + "your records AND your registry, because the only thing it asks of anything is "
+            + "whether it keeps the promise.");
+
+        object? result;
+        try
+        {
+            result = method.Invoke(registry, null);
+        }
+        catch (TargetInvocationException e) when (e.InnerException != null)
+        {
+            throw new Xunit.Sdk.XunitException(
+                $"Registry.Everything() threw {e.InnerException.GetType().Name}:\n"
+                + $"    {e.InnerException.Message}");
+        }
+
+        Assert.True(result is System.Collections.IList,
+            "Registry.Everything() handed back null instead of a list.");
+
+        return (System.Collections.IList)result!;
     }
 }
