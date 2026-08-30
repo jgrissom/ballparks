@@ -1,4 +1,4 @@
-public class BallPark
+public class BallPark : IListed
 {
     private string _name = "unknown";
     public string Name                               // rule → explicit field
@@ -17,12 +17,12 @@ public class BallPark
     }
 
     public int GamesSeen { get; private set; }         // read by all, moved by Visit only
-    public DateOnly? LastVisit { get; private set; }
+    // public DateOnly? LastVisit { get; private set; }
 
-    public void Visit(DateOnly when)
+    public void Visit()
     {
         GamesSeen++;
-        LastVisit = when;
+        // LastVisit = when;
     }
 
     public BallPark(string name, string team = "unknown", int capacity = 0)
@@ -31,4 +31,8 @@ public class BallPark
         Team = team;
         Capacity = capacity;
     }
+
+    public string Kind => "BALLPARK";
+
+    public string Line() => $"{Name} - {Team} - visits {GamesSeen}";
 }

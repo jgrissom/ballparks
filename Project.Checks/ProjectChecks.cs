@@ -5,16 +5,13 @@
 //  Run them from the top of your PROJECT repo — the other window:
 //      dotnet test Project.Checks
 //
-//  Week 2 of the semester project. Last week your record learned to
-//  defend itself. This week it learns to DO something — and the two
-//  questions underneath every check here are the two the whole session
-//  was about:
+//  Week 3 of the semester project. Your record can defend itself (week 4)
+//  and do something (week 5). This week it makes a PROMISE — and so does
+//  the registry holding it, which is not a kind of record and never will
+//  be. One list holds them both anyway.
 //
-//      how many of this thing are there?      (one each, or one shared)
-//      and what happens when there isn't one?  (null, and living with it)
-//
-//  Nothing here asks what your topic is, what your record is called, or
-//  what you named the method that does the doing.
+//  ⚠️ Not one check below reads a word of what your Kind or your Line()
+//  actually says. They ask whether the promise is kept.
 // ═══════════════════════════════════════════════════════════════════
 using System.Reflection;
 
@@ -28,61 +25,133 @@ public class ProjectChecks
         "your topic here", "topic", "todo", "tbd", "changeme", "my topic",
     };
 
+    // What the homework's shape-first step leaves behind on purpose.
+    private static readonly string[] NotAKind =
+    {
+        "?", "kind", "todo", "tbd", "-", "(kind)",
+    };
+
+    private static bool Placeholder(string? text) =>
+        string.IsNullOrWhiteSpace(text)
+        || NotAKind.Contains(text!.Trim().ToLowerInvariant());
+
     [Fact]
-    public void Check1_YourRecordDoesSomething()
+    public void Check1_YourRecordKeepsThePromise()
+    {
+        var listed = StudentCode.ListedType();
+        var type = StudentCode.ItemType();
+        var registry = StudentCode.NewRegistry();
+
+        Assert.True(StudentCode.Keeps(type),
+            $"{type.Name} does not keep IListed's promise, so nothing can put it on a "
+            + "listing. One phrase, after the class name:\n"
+            + $"    public class {type.Name} : IListed\n"
+            + "Build it the moment you have typed that. The compiler answers with one "
+            + "CS0535 for each member you still owe, which is the most useful to-do list "
+            + "you will get tonight.\n"
+            + "👉 Next: the colon, then the two members.");
+
+        var item = StudentCode.NewItem(registry, "The Roundhouse");
+
+        var kind = StudentCode.KindOf(item);
+        Assert.True(!Placeholder(kind),
+            $"{type.Name}.Kind says \"{kind}\", which is a placeholder rather than an "
+            + "answer. It is the one word in the left-hand column of your listing — what "
+            + $"a {type.Name} IS, in a word:\n"
+            + "    public string Kind => \"LIGHTHOUSE\";\n"
+            + "👉 Next: one line, in your record.");
+
+        var line = StudentCode.LineOf(item);
+        Assert.True(!string.IsNullOrWhiteSpace(line),
+            $"{type.Name}.Line() came back empty. It is the rest of the row — the facts "
+            + "this record is the authority on, in whatever words and whatever order you "
+            + "like:\n"
+            + "    public string Line() => $\"{Name} - {Height}ft - visited {TimesVisited}x\";\n"
+            + "The wording is entirely yours. Coming back with something is not.");
+
+        Assert.True(line.Contains("The Roundhouse"),
+            $"I made a record called \"The Roundhouse\" and its Line() said:\n"
+            + $"    {line}\n"
+            + "A line on a listing that doesn't name the thing it is about is a line "
+            + "nobody can use. Read the property NewItem put that name into — whatever "
+            + "you called it — the same one Find compares against.");
+    }
+
+    [Fact]
+    public void Check2_EachRecordWritesItsOwnLine()
     {
         var type = StudentCode.ItemType();
         var registry = StudentCode.NewRegistry();
 
-        var sealedOnes = StudentCode.SealedProperties(type);
-        Assert.True(sealedOnes.Length > 0,
-            $"Every property on {type.Name} can still be written from anywhere outside it, "
-            + "so there is nothing for a method of yours to be the only way into.\n"
-            + "That was last week's check 4 and it is this week's starting line:\n"
-            + "    public int TimesVisited { get; private set; }\n"
-            + "👉 Next: take the public `set` off the fact your record is the authority on.");
+        var first = StudentCode.NewItem(registry, "The Roundhouse");
+        var second = StudentCode.NewItem(registry, "Sable Point");
 
-        var verb = StudentCode.TheVerb(registry);
+        var one = StudentCode.LineOf(first);
+        var other = StudentCode.LineOf(second);
 
-        Assert.True(verb != null,
-            $"{type.Name} has a property nothing can write from outside — and nothing INSIDE "
-            + "writes it either, so it never changes at all.\n"
-            + "A sealed property with no method to move it is decoration: it promises \"only "
-            + "I change this\" and then nothing ever does. Give it the verb that moves it:\n"
-            + "    public int TimesVisited { get; private set; }\n"
-            + "\n"
-            + "    public void Visit()\n"
-            + "    {\n"
-            + "        TimesVisited++;\n"
-            + "    }\n"
-            + $"I tried every public method on {type.Name} ({StudentCode.VerbNames(type)}) "
-            + "and none of them changed a sealed property. Call it whatever suits your topic "
-            + "— Visit, Play, Check, Ride, Sighted. I never look at the name.\n"
-            + "👉 Next: add the method, and make it the only way that fact moves.");
+        Assert.True(one != other,
+            $"Two different records wrote the same line:\n    {one}\n    {other}\n"
+            + "Line() is being built out of something fixed rather than out of the record "
+            + "it is running on. Read the record's own properties — the ones the object "
+            + "you are inside is holding.");
 
-        // ...and it does it to ITSELF. One record's business is its own.
-        var mine = StudentCode.NewItem(registry, "The First One");
-        var yours = StudentCode.NewItem(registry, "The Second One");
-        var yoursBefore = StudentCode.Snapshot(yours);
-        StudentCode.WhatItMoves(mine, verb!);
-
-        var alsoMoved = StudentCode.Moved(yoursBefore, yours);
-        Assert.True(alsoMoved.Length == 0,
-            $"I called {verb!.Name}() on one of your records and a DIFFERENT record changed: "
-            + $"{string.Join(", ", alsoMoved)}.\n"
-            + "There is one copy of that fact shared by every record in your program, which "
-            + "is what `static` means — the field belongs to the CLASS, not to any one "
-            + $"{type.Name}. One copy, made once, alive as long as the program runs, and "
-            + "every record reporting the same number.\n"
-            + "    private static int _timesVisited;              // ← one for everything\n"
-            + "    public int TimesVisited { get; private set; }   // ← one per record\n"
-            + "A fact ABOUT one of your records is never static.");
+        Assert.True(StudentCode.KindOf(first) == StudentCode.KindOf(second),
+            $"Two records of the same type gave two different Kinds — "
+            + $"\"{StudentCode.KindOf(first)}\" and \"{StudentCode.KindOf(second)}\". "
+            + $"Kind says what sort of thing this is, and both of these are a {type.Name}. "
+            + "It is the same word for every one of them:\n"
+            + "    public string Kind => \"LIGHTHOUSE\";");
     }
 
     [Fact]
-    public void Check2_TheRegistryCanFindOne()
+    public void Check3_TheRegistryKeepsItToo()
     {
-        var type = StudentCode.ItemType();
+        var registryType = StudentCode.RegistryType();
+        var itemType = StudentCode.ItemType();
+        var registry = StudentCode.NewRegistry();
+
+        Assert.True(StudentCode.Keeps(registryType),
+            "Registry does not keep IListed's promise.\n"
+            + "    public class Registry : IListed\n"
+            + "⚠️ This is the whole point of the week, so it is worth being clear about "
+            + $"what it is NOT saying. A Registry is not a {itemType.Name}. It is not a "
+            + $"kind of {itemType.Name} and it never will be — one of them holds the "
+            + "things and the other one IS one of the things. It goes on the same listing "
+            + "anyway, because the "
+            + "listing only ever asks two questions and this class can answer both.\n"
+            + "👉 Next: the colon, then Kind and Line() on Registry.");
+
+        var kind = StudentCode.KindOf(registry);
+        Assert.True(!Placeholder(kind),
+            $"Registry.Kind says \"{kind}\", which is a placeholder rather than an answer.\n"
+            + "    public string Kind => \"REGISTRY\";");
+
+        StudentCode.Add(registry, StudentCode.NewItem(registry, "The Roundhouse"));
+        var item = StudentCode.NewItem(registry, "Sable Point");
+        StudentCode.Add(registry, item);
+
+        Assert.True(kind != StudentCode.KindOf(item),
+            $"Registry and {itemType.Name} both call themselves \"{kind}\". Kind is how "
+            + "somebody reading the listing tells one row from another — two different "
+            + "sorts of thing need two different words.");
+
+        var line = StudentCode.LineOf(registry);
+        Assert.True(!string.IsNullOrWhiteSpace(line),
+            "Registry.Line() came back empty. It is the heading of your listing, and the "
+            + "registry is the one object in the program that knows what to put in it:\n"
+            + "    public string Line() => $\"{Topic} - {Count} on file\";");
+
+        Assert.True(line != StudentCode.LineOf(item),
+            $"Registry.Line() and {itemType.Name}.Line() said the same thing:\n"
+            + $"    {line}\n"
+            + "Same promise, two completely different answers — that is the only reason "
+            + "putting them on one list is worth anything.");
+    }
+
+    [Fact]
+    public void Check4_OneListHoldsThemBoth()
+    {
+        var itemType = StudentCode.ItemType();
         var registry = StudentCode.NewRegistry();
 
         var first = StudentCode.NewItem(registry, "The Roundhouse");
@@ -90,132 +159,56 @@ public class ProjectChecks
         StudentCode.Add(registry, first);
         StudentCode.Add(registry, second);
 
-        var found = StudentCode.Find(registry, "Sable Point");
+        var listing = StudentCode.Everything(registry);
+        var things = listing.Cast<object?>().ToList();
 
-        Assert.True(found != null,
-            "Registry.Find(\"Sable Point\") handed back nothing, and a record made with that "
-            + "exact name is on the registry.\n"
-            + $"    public {type.Name}? Find(string name)\n"
+        Assert.True(things.All(t => t != null),
+            "Registry.Everything() handed back a list with a null in it. Everything on a "
+            + "listing has to be able to answer — a null cannot, and the first loop over "
+            + "it crashes.");
+
+        Assert.True(things.Any(t => ReferenceEquals(t, first))
+                    && things.Any(t => ReferenceEquals(t, second)),
+            $"Registry.Everything() handed back {things.Count} thing(s), and the two "
+            + $"records on the registry are not both in it — or they are copies rather "
+            + "than the records themselves. Walk the private list and add the records you "
+            + "are actually holding:\n"
+            + $"        foreach ({itemType.Name} item in _items) {{ listing.Add(item); }}");
+
+        Assert.True(things.Any(t => ReferenceEquals(t, registry)),
+            "Registry.Everything() handed back the records and nothing else. The heading "
+            + "is a line on the listing too, and the registry is what writes it:\n"
+            + "    public List<IListed> Everything()\n"
             + "    {\n"
-            + $"        foreach ({type.Name} item in _items)\n"
-            + "        {\n"
-            + "            if (item.Name == name) { return item; }\n"
-            + "        }\n"
-            + "        return null;\n"
+            + "        List<IListed> listing = new List<IListed>();\n"
+            + "        listing.Add(this);\n"
+            + $"        foreach ({itemType.Name} item in _items) {{ listing.Add(item); }}\n"
+            + "        return listing;\n"
             + "    }\n"
-            + "⚠️ Find looks for the same fact NewItem is handed. NewItem takes a name and "
-            + "puts it somewhere on the record; Find has to compare against that same "
-            + "property, whatever you called it.\n"
-            + "👉 Next: write the loop in Registry.Find.");
+            + "`this` is the registry the method is running on — the same word you watched "
+            + "in the Variables pane last week.");
 
-        // The one that matters this week: THE record, not a record like it.
-        Assert.True(ReferenceEquals(found, second),
-            $"Find(\"Sable Point\") handed back a {type.Name} — but not the one on the "
-            + "registry. It built a new one with the same name.\n"
-            + "That is a copy, and a copy is a dead end: every change made through it lands "
-            + "on a record nothing else is looking at, and the one in the registry never "
-            + "moves.\n"
-            + "Find hands back the record it found. It never makes one:\n"
-            + "        if (item.Name == name) { return item; }\n"
-            + "Two names for one object — the thing the registry is holding and the thing "
-            + "you were handed have to be the same object.");
+        Assert.True(things.Count == 3,
+            $"Registry.Everything() handed back {things.Count} things for a registry "
+            + "holding two records. It should be the registry's own line plus one per "
+            + "record, and each of them exactly once.");
 
-        Assert.True(ReferenceEquals(StudentCode.Find(registry, "The Roundhouse"), first),
-            "Find works for one record and not the other, so the loop is giving up on the "
-            + "first record instead of walking all of them. The `if` goes INSIDE the "
-            + "foreach; the `return null` goes after it.");
+        // And every one of them answers, which is the only thing the list ever asked.
+        var kinds = things.Select(t => StudentCode.KindOf(t!)).ToList();
+        var lines = things.Select(t => StudentCode.LineOf(t!)).ToList();
+
+        Assert.True(kinds.Distinct().Count() == 2,
+            $"The listing came back with these kinds on it: {string.Join(", ", kinds)}. "
+            + "Two sorts of thing are on that list — the registry and your records — so "
+            + "there should be exactly two different words in that column.");
+
+        Assert.True(lines.All(l => !string.IsNullOrWhiteSpace(l)),
+            "Something on the listing came back with an empty Line(). Every row has to say "
+            + "something; that is the deal the promise makes.");
     }
 
     [Fact]
-    public void Check3_AndNothingWhenThereIsnt()
-    {
-        var type = StudentCode.ItemType();
-        var registry = StudentCode.NewRegistry();
-
-        // The worst case first: nothing on the registry at all.
-        Assert.True(StudentCode.Find(registry, "Nobody Here") == null,
-            "Registry.Find handed something back from an EMPTY registry.\n"
-            + "There was nothing to find, so the only honest answer was `null`. A Find that "
-            + "reaches into the list for a record that isn't there — `return _items[0];` — "
-            + "throws the moment the list is empty, which on a real registry is the first "
-            + "run of the program.\n"
-            + "👉 Next: `return null;` after the loop.");
-
-        StudentCode.Add(registry, StudentCode.NewItem(registry, "The Roundhouse"));
-        StudentCode.Add(registry, StudentCode.NewItem(registry, "Sable Point"));
-
-        var nothing = StudentCode.Find(registry, "Somewhere I Never Added");
-
-        Assert.True(nothing == null,
-            $"Find(\"Somewhere I Never Added\") handed back a {type.Name}, and nothing by "
-            + "that name is on the registry. It is handing back the first record, or the "
-            + "last one it looked at, rather than admitting there wasn't one.\n"
-            + $"    public {type.Name}? Find(string name)\n"
-            + "The `?` is what makes `null` a legal answer here — and `null` is the right "
-            + "answer, not an embarrassing one. It means exactly what happened: I looked, "
-            + "and there is no such record.\n"
-            + "👉 Next: `return null;` goes AFTER the loop, not inside it.");
-
-        Assert.True(StudentCode.Count(registry) == 2,
-            $"Looking for a record that wasn't there changed the registry — it holds "
-            + $"{StudentCode.Count(registry)} records instead of 2. Find looks. It never "
-            + "adds, and it never removes.");
-    }
-
-    [Fact]
-    public void Check4_AndCanTakeOneOffTheBooks()
-    {
-        var type = StudentCode.ItemType();
-        var registry = StudentCode.NewRegistry();
-
-        StudentCode.Add(registry, StudentCode.NewItem(registry, "The Roundhouse"));
-        StudentCode.Add(registry, StudentCode.NewItem(registry, "Sable Point"));
-
-        // The one that isn't there. Nothing should happen, and it should say so.
-        bool removedNothing = StudentCode.Remove(registry, "Somewhere I Never Added");
-
-        Assert.False(removedNothing,
-            "Remove(\"Somewhere I Never Added\") said true, and nothing by that name was on "
-            + "the registry. It only reports true when it actually took a record off:\n"
-            + $"        {type.Name}? found = Find(name);\n"
-            + "        if (found == null) { return false; }\n"
-            + "        _items.Remove(found);\n"
-            + "        return true;");
-
-        Assert.True(StudentCode.Count(registry) == 2,
-            $"Removing a record that wasn't there left the registry holding "
-            + $"{StudentCode.Count(registry)} records instead of 2. When Find comes back "
-            + "null there is nothing to do — that is the whole job of the `if`.");
-
-        bool removed = StudentCode.Remove(registry, "The Roundhouse");
-
-        Assert.True(removed,
-            "Remove(\"The Roundhouse\") said false, and a record made with that exact name "
-            + "was on the registry. If check 2 is also red, fix Find first — Remove is built "
-            + "on it.\n"
-            + "👉 Next: `return true;` after the record comes off the list.");
-
-        Assert.True(StudentCode.Count(registry) == 1,
-            $"Remove said true and the registry still holds {StudentCode.Count(registry)} "
-            + "records. Saying so is not the same as doing it — the record has to come off "
-            + "the private list:\n"
-            + "        _items.Remove(found);\n"
-            + "⚠️ Removing from the list All() handed you does nothing to the registry: that "
-            + "is a copy of the list, and emptying it empties the copy.");
-
-        Assert.True(StudentCode.Find(registry, "The Roundhouse") == null,
-            "Remove said true and the registry says it holds one fewer — but Find still "
-            + "turns the record up, so it came off something other than the list Find walks. "
-            + "Both of them work on _items.");
-
-        Assert.True(StudentCode.Find(registry, "Sable Point") != null,
-            "Removing The Roundhouse took Sable Point off too. `_items.Remove(found)` takes "
-            + "off the ONE record it was handed — if the whole list went, something called "
-            + "Clear() instead.");
-    }
-
-    [Fact]
-    public void Check5_LastWeeksDoorsStillHold()
+    public void Check5_WeeksFourAndFiveStillHold()
     {
         var type = StudentCode.ItemType();
 
@@ -225,8 +218,8 @@ public class ProjectChecks
             .GetField("Topic", BindingFlags.Public | BindingFlags.Static);
 
         Assert.True(property != null || field != null,
-            "Registry has no public static Topic any more. It was there last week — put it "
-            + "back:\n"
+            "Registry has no public static Topic any more. It has been there since week 4 "
+            + "— put it back:\n"
             + "    public static string Topic => \"Lighthouses of the Outer Banks\";");
 
         var topic = (property != null ? property.GetValue(null) : field!.GetValue(null)) as string;
@@ -239,24 +232,32 @@ public class ProjectChecks
         Assert.True(fields.Length == 0,
             $"{type.Name} has grown {fields.Length} public field(s) back: "
             + $"{string.Join(", ", fields.Select(f => f.Name))}.\n"
-            + "A public field is a hole in the wall — anything, anywhere, can write anything "
-            + "into it. That door was shut last week and it stays shut every week after.");
+            + "That door was shut in week 4 and it stays shut every week after.");
 
-        // And the copy, which is now only half the story — see check 3.
         var registry = StudentCode.NewRegistry();
-        StudentCode.Add(registry, StudentCode.NewItem(registry, "The First One"));
-        StudentCode.Add(registry, StudentCode.NewItem(registry, "The Second One"));
+        var first = StudentCode.NewItem(registry, "The Roundhouse");
+        StudentCode.Add(registry, first);
+        StudentCode.Add(registry, StudentCode.NewItem(registry, "Sable Point"));
 
         var handedBack = StudentCode.All(registry);
         handedBack.Clear();
 
         Assert.True(StudentCode.Count(registry) == 2,
             "Somebody emptied the list All() handed them and the Registry went from 2 "
-            + $"records to {StudentCode.Count(registry)}. All() hands back a COPY of the "
-            + "list:\n"
-            + $"    public List<{type.Name}> All() {{ return new List<{type.Name}>(_items); }}\n"
-            + "⚠️ Worth knowing this week: that copies the LIST, not the records in it. The "
-            + "records are the same records — which is exactly what makes Find useful, and "
-            + "exactly what makes handing your list out dangerous.");
+            + $"records to {StudentCode.Count(registry)}. All() hands back a COPY.");
+
+        Assert.True(ReferenceEquals(StudentCode.Find(registry, "The Roundhouse"), first),
+            "Registry.Find no longer hands back the record the registry is holding. That "
+            + "was week 5's check 2 and it is still the deal — Find never builds a new one.");
+
+        Assert.True(StudentCode.Find(registry, "Somewhere I Never Added") == null,
+            "Registry.Find handed something back for a name nobody has. Week 5's check 3.");
+
+        Assert.True(StudentCode.Remove(registry, "The Roundhouse")
+                    && StudentCode.Count(registry) == 1,
+            "Registry.Remove no longer takes a record off and says it did. Week 5's check 4.");
+
+        Assert.True(!StudentCode.Remove(registry, "Somewhere I Never Added"),
+            "Registry.Remove said true for a name nobody has. Week 5's check 4.");
     }
 }
