@@ -37,4 +37,13 @@ public class RegistryTests
         Assert.False(result);
         Assert.Equal(1, registry.Count);
     }
+
+    [Fact]
+    public void Check5_TheSameNameCannotRegisterTwice()
+    {
+        var registry = new Registry();
+        registry.Add(new BallPark("American Family Field"));
+        registry.Add(new BallPark("American Family Field"));
+        Assert.Equal(1, registry.Count);
+    }
 }
