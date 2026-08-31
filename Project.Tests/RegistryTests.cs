@@ -26,4 +26,15 @@ public class RegistryTests
         // registry.Add(new BallPark("Wrigley Field"));
         Assert.Same(amfam, found);
     }
+
+    [Fact]
+    public void Check4_RemovingAStrangerSaysNo()
+    {
+        var registry = new Registry();
+        var amfam = new BallPark("American Family Field");
+        registry.Add(amfam);
+        var result = registry.Remove("Wrigley Field");
+        Assert.False(result);
+        Assert.Equal(1, registry.Count);
+    }
 }
