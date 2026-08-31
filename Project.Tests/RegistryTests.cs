@@ -15,4 +15,15 @@ public class RegistryTests
         // check:          Assert.Equal — what should Count be?
         Assert.Equal(2, registry.Count);
     }
+
+    [Fact]
+    public void Check3_FindHandsBackTheRecordItHolds()
+    {
+        var registry = new Registry();
+        var amfam = new BallPark("American Family Field");
+        registry.Add(amfam);
+        var found = registry.Find("American Family Field");
+        // registry.Add(new BallPark("Wrigley Field"));
+        Assert.Same(amfam, found);
+    }
 }
