@@ -15,10 +15,10 @@
 //  That is the whole trick, and it is why NewItem has to be there even
 //  though your program barely uses it. It is the door.
 //
-//  ⚠️ NEW THIS WEEK, and it is all that was added to the contract:
-//  an interface called IListed with Kind and Line() on it, kept by your
-//  record AND by Registry itself, plus Registry.Everything() which hands
-//  back one list holding both. Everything else is unchanged.
+//  ⚠️ NEW THIS WEEK: nothing was added to the contract at all — no new
+//  name, no new member. What changed is a RULE: Add now refuses a record
+//  whose name is already on the books. Same signature, void Add, quietly
+//  choosier. Check 5 is my copy of the test you write yourself tonight.
 //
 //  Nothing in here looks for a method by name on YOUR record, and nothing
 //  reads a word of what your Kind or your Line() actually SAY. They ask
