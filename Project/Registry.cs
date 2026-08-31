@@ -9,7 +9,10 @@ public class Registry : IListed
 
     public void Add(BallPark item)
     {
-        _ballParks.Add(item);
+        if (Find(item.Name) == null)
+        {
+            _ballParks.Add(item);
+        }
     }
 
     public int Count => _ballParks.Count;
