@@ -46,4 +46,31 @@ public class RegistryTests
         registry.Add(new BallPark("American Family Field"));
         Assert.Equal(1, registry.Count);
     }
+
+    [Fact]
+    public void Week8_TheRegistrySurvivesARestart()
+    {
+        string path = Path.Combine(Path.GetTempPath(), "ballparks-test.json");
+        File.Delete(path);
+
+        Registry registry = new Registry();
+        BallPark ballPark = registry.NewItem("Google Park");
+        ballPark.Capacity = 42380;
+        registry.Add(ballPark);
+        ballPark.Visit();
+
+        registry.Save(path);
+
+        // A second registry, holding nothing, reading the same file.
+        Registry reopened = new Registry();
+        reopened.Load(path);
+
+        Assert.Equal(1, reopened.Count);
+
+        BallPark? back = reopened.Find("Google Park");
+
+        Assert.NotNull(back);
+        Assert.Equal(42380, back!.Capacity);
+        Assert.Equal(1, back.GamesSeen);
+    }
 }

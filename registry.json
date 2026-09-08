@@ -1,0 +1,23 @@
+[
+  {
+    "Name": "your first one",
+    "Team": "unknown",
+    "Capacity": 0,
+    "GamesSeen": 0,
+    "Kind": "BALLPARK"
+  },
+  {
+    "Name": "Wrigley Field",
+    "Team": "Cubs",
+    "Capacity": 41649,
+    "GamesSeen": 0,
+    "Kind": "BALLPARK"
+  },
+  {
+    "Name": "Fenway Park",
+    "Team": "Red Sox",
+    "Capacity": 37755,
+    "GamesSeen": 7,
+    "Kind": "BALLPARK"
+  }
+]
