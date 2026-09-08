@@ -1,4 +1,6 @@
 // Project/Registry.cs
+using System.Text.Json;
+
 public class Registry : IListed
 {
     private readonly List<BallPark> _ballParks = new List<BallPark>();
@@ -64,5 +66,13 @@ public class Registry : IListed
         }
 
         return listing;
+    }
+
+    public void Save(string path)
+    {
+        string json = JsonSerializer.Serialize(_ballParks,
+            new JsonSerializerOptions { WriteIndented = true });
+
+        File.WriteAllText(path, json);
     }
 }
