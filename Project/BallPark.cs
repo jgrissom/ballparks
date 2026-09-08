@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 public class BallPark : IListed
 {
     private string _name = "unknown";
@@ -15,7 +17,7 @@ public class BallPark : IListed
         get { return _capacity; }
         set { if (value > 0) { _capacity = value; } }
     }
-
+    [JsonInclude]
     public int GamesSeen { get; private set; }         // read by all, moved by Visit only
     // public DateOnly? LastVisit { get; private set; }
 
