@@ -20,6 +20,12 @@ public class Registry : IListed
         return _ballParks.OrderBy(b => b.Name).ToList();
     }
 
+    public List<BallPark> Matching(string term)
+    {
+        // TODO: hand back only the items whose name contains term, in the order the registry holds them.
+        return _ballParks.Where(b => b.Name.Contains(term)).ToList();
+    }
+
     public void Add(BallPark item)
     {
         if (Find(item.Name) == null)

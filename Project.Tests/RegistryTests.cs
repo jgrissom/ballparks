@@ -73,4 +73,23 @@ public class RegistryTests
         Assert.Equal(42380, back!.Capacity);
         Assert.Equal(1, back.GamesSeen);
     }
+
+    [Fact]
+    public void Week9_FindComesBackEmptyHanded()
+    {
+        // Add new record
+        Registry registry = new Registry();
+        string Name = "Google Park";
+        BallPark ballPark = registry.NewItem("Google Park");
+        registry.Add(ballPark);
+
+        // Find the record by name
+        var found = registry.Find(Name);
+
+        // "Find" a registry that does not exist
+        var notFound = registry.Find("Bogus");
+
+        Assert.Same(ballPark, found);
+        Assert.Null(notFound);
+    }
 }
