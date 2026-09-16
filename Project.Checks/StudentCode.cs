@@ -15,15 +15,23 @@
 //  That is the whole trick, and it is why NewItem has to be there even
 //  though your program barely uses it. It is the door.
 //
-//  ⚠️ NEW THIS WEEK: two members, and their signatures are part of the
+//  ⚠️ NEW THIS WEEK: three members, and their signatures are part of the
 //  deal the way every dictated name has been since week 4:
 //
-//      public void Save(string path)
-//      public void Load(string path)
+//      public List<string> Names()
+//      public List<YourRecord> Sorted()
+//      public List<YourRecord> Matching(string term)
 //
-//  The PATH is handed in and never written down inside them — which is
-//  what lets these checks hand your registry a scratch file in the
-//  system's temp folder rather than the one your program uses.
+//  ⭐ Notice what these checks do NOT do: they never look for a property
+//  called Name. They cannot — yours might be Corner or Title or Elevation.
+//  So Sorted() is verified by REFERENCE: three records go in, and the
+//  checks ask your own Find for each one and compare what came back with
+//  what Sorted() put in each position. Names() is verified against the
+//  three strings the checks handed NewItem in the first place.
+//
+//  Week 8's Save and Load are still dictated, and the PATH is still handed
+//  in — which is what lets these checks hand your registry a scratch file
+//  in the system's temp folder rather than the one your program uses.
 //
 //  Nothing in here looks for a method by name on YOUR record, and nothing
 //  reads a word of what your Kind or your Line() actually SAY. They ask
@@ -54,6 +62,9 @@ internal static class StudentCode
         + "        public List<Lighthouse> All() { return new List<Lighthouse>(_items); }\n"
         + "        public void Save(string path) { ... }      // week 8\n"
         + "        public void Load(string path) { ... }      // week 8\n"
+        + "        public List<string> Names() { ... }        // week 9\n"
+        + "        public List<Lighthouse> Sorted() { ... }   // week 9\n"
+        + "        public List<Lighthouse> Matching(string term) { ... }   // week 9\n"
         + "    }\n"
         + "Lighthouse is my example. Yours is whatever your topic is made of.\n"
         + "(Find, Remove, Kind, Line and Everything are there too, from weeks 5 and 6.)\n";
@@ -154,8 +165,29 @@ internal static class StudentCode
     // Your record type, learned from the contract rather than guessed at.
     internal static Type ItemType() => RequireMethod("NewItem", typeof(string)).ReturnType;
 
-    internal static void Add(object registry, object item) =>
-        RequireMethod("Add", ItemType()).Invoke(registry, new[] { item });
+    internal static void Add(object registry, object item)
+    {
+        var method = RequireMethod("Add", ItemType());
+        try
+        {
+            method.Invoke(registry, new[] { item });
+        }
+        catch (TargetInvocationException e) when (e.InnerException != null)
+        {
+            throw new Xunit.Sdk.XunitException(
+                $"Registry.Add(...) threw {e.InnerException.GetType().Name} instead of "
+                + $"putting a record on the books:\n    {e.InnerException.Message}\n"
+                + "⚠️ On an EMPTY registry, which is where this one broke. Add asks Find "
+                + "first (week 7's guard), so a Find that cannot cope with finding nothing "
+                + "takes Add down with it.\n"
+                + "  • It is FirstOrDefault, never First. First OBJECTS to an empty "
+                + "sequence — it throws InvalidOperationException — and answering \"nothing "
+                + "here\" is half of what Find is for.\n"
+                + "  • Same for Last/Single: the ...OrDefault versions hand back null.\n"
+                + "👉 Next: read Find. Then run your own program — the first record you add "
+                + "goes onto an empty registry too.");
+        }
+    }
 
     internal static int Count(object registry)
     {
@@ -223,9 +255,12 @@ internal static class StudentCode
             throw new Xunit.Sdk.XunitException(
                 $"Registry.Find(\"{name}\") threw {e.InnerException.GetType().Name} instead of "
                 + $"answering:\n    {e.InnerException.Message}\n"
-                + "Find has to cope with a name nobody has. Walk the list, hand back the "
-                + "record whose name matches, and `return null;` after the loop when none "
-                + "of them did — never reach into the list for a record that isn't there.");
+                + "Find has to cope with a name nobody has — answering \"nothing here\" is "
+                + "half of what it is for.\n"
+                + "⚠️ If you rewrote Find this week: it is FirstOrDefault, never First. "
+                + "First OBJECTS to an empty sequence and throws "
+                + "InvalidOperationException; FirstOrDefault hands back null, which is what "
+                + "`return null;` after the loop used to do.");
         }
     }
 
@@ -532,6 +567,74 @@ internal static class StudentCode
                 + "not a failure. Ask File.Exists(path) before you read anything, and simply "
                 + "return when the answer is no.");
         }
+    }
+
+    // ── week 9 ─────────────────────────────────────────────────────────────
+    // Three queries. Every one is dictated by signature, and not one of them
+    // needs these checks to know a single thing about YOUR record's names.
+
+    private static System.Collections.IList AskList(string name, object registry,
+        Type wanted, params object?[] args)
+    {
+        var method = RequireMethod(name, args.Select(a => a?.GetType() ?? typeof(string)).ToArray());
+
+        Assert.True(method.ReturnType == wanted,
+            $"Registry.{name} hands back a {Pretty(method.ReturnType)}, and it is dictated "
+            + $"to hand back a {Pretty(wanted)}:\n"
+            + $"    public {Pretty(wanted)} {name}({string.Join(", ", method.GetParameters().Select(p => p.ParameterType.Name + " " + p.Name))})\n"
+            + "⚠️ The ToList() on the end of a query is what turns it into a list. Without "
+            + "it you hand back an IEnumerable — a RECIPE for working the answer out, which "
+            + "re-runs every time anybody looks at it.");
+
+        object? result;
+        try
+        {
+            result = method.Invoke(registry, args);
+        }
+        catch (TargetInvocationException e) when (e.InnerException != null)
+        {
+            throw new Xunit.Sdk.XunitException(
+                $"Registry.{name}(...) threw {e.InnerException.GetType().Name} instead of "
+                + $"answering:\n    {e.InnerException.Message}\n"
+                + "⚠️ Two of this week's rewrites throw where a loop simply answered:\n"
+                + "  • First(), Last() and Single() OBJECT to an empty sequence. The\n"
+                + "    ...OrDefault versions hand back null instead.\n"
+                + "  • MaxBy and MinBy hand back NULL for an empty list, so asking their\n"
+                + "    answer for a property straight off dies. Put a ?. in front of it.\n"
+                + "👉 Next: run your own program and try the same thing by hand.");
+        }
+
+        Assert.True(result is System.Collections.IList,
+            $"Registry.{name}(...) handed back null instead of a list. A query that finds "
+            + "nothing hands back an EMPTY list — never null, and never an error.");
+
+        return (System.Collections.IList)result!;
+    }
+
+    // IEnumerable`1 is not a thing a student can read. Render it the way they
+    // would write it.
+    private static string Pretty(Type t) =>
+        t.IsGenericType
+            ? t.Name.Substring(0, t.Name.IndexOf('`'))
+              + "<" + string.Join(", ", t.GetGenericArguments().Select(Pretty)) + ">"
+            : t.Name;
+
+    internal static List<string> Names(object registry)
+    {
+        var list = AskList("Names", registry, typeof(List<string>));
+        return list.Cast<string?>().Select(s => s ?? "(null)").ToList();
+    }
+
+    internal static List<object?> Sorted(object registry)
+    {
+        var wanted = typeof(List<>).MakeGenericType(ItemType());
+        return AskList("Sorted", registry, wanted).Cast<object?>().ToList();
+    }
+
+    internal static List<object?> Matching(object registry, string term)
+    {
+        var wanted = typeof(List<>).MakeGenericType(ItemType());
+        return AskList("Matching", registry, wanted, term).Cast<object?>().ToList();
     }
 
     // A scratch file of this check's own, deleted first so a previous run
