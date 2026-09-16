@@ -9,6 +9,23 @@ public class Registry : IListed
 
     public BallPark NewItem(string name) => new BallPark(name);
 
+    public List<string> Names()
+    {
+        return _ballParks.Select(item => item.Name).ToList();
+    }
+
+    public List<BallPark> Sorted()
+    {
+        // TODO: hand back your items in order by name — a sorted COPY, not the list itself.
+        return _ballParks.OrderBy(b => b.Name).ToList();
+    }
+
+    public List<BallPark> Matching(string term)
+    {
+        // TODO: hand back only the items whose name contains term, in the order the registry holds them.
+        return _ballParks.Where(b => b.Name.Contains(term)).ToList();
+    }
+
     public void Add(BallPark item)
     {
         if (Find(item.Name) == null)

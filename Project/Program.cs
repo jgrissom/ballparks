@@ -46,3 +46,26 @@ registry.Save(registryFile);
 
 Console.WriteLine();
 Console.WriteLine($"{registry.Count} on file, saved to {registryFile}.");
+
+Console.WriteLine();
+Console.WriteLine("In order:");
+
+foreach (var record in registry.Sorted())
+{
+    Console.WriteLine($"  {record.Name}");
+}
+
+Console.WriteLine();
+Console.WriteLine($"On the books, as they arrived: {string.Join(", ", registry.Names())}");
+
+Console.Write("Search (a word, or Enter to skip): ");
+string? term = Console.ReadLine();
+
+if (!string.IsNullOrWhiteSpace(term))
+{
+    var found = registry.Matching(term.Trim());
+
+    Console.WriteLine(found.Count == 0
+        ? $"  Nothing on file with \"{term.Trim()}\" in it."
+        : $"  {found.Count} match(es).");
+}
