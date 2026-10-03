@@ -1,6 +1,8 @@
 ﻿// Project/Program.cs — swap Thing for your record's name, and Visit for your verb
 var registry = new Registry();
 
+string registryFile = "registry.json";
+
 registry.Add(new BallPark("Wrigley Field", "Cubs", 41649));
 registry.Add(new BallPark("Fenway Park", "Red Sox", 37755));
 registry.Add(new BallPark("Oracle Park", "Giants", 41265));
@@ -32,3 +34,6 @@ foreach (IListed thing in registry.Everything())
 {
     Console.WriteLine($"{thing.Kind,-12}{thing.Line()}");
 }
+
+registry.Save(registryFile);
+Console.WriteLine($"{registry.Count} on file, saved to {registryFile}.");
