@@ -15,10 +15,15 @@
 //  That is the whole trick, and it is why NewItem has to be there even
 //  though your program barely uses it. It is the door.
 //
-//  ⚠️ NEW THIS WEEK: nothing was added to the contract at all — no new
-//  name, no new member. What changed is a RULE: Add now refuses a record
-//  whose name is already on the books. Same signature, void Add, quietly
-//  choosier. Check 5 is my copy of the test you write yourself tonight.
+//  ⚠️ NEW THIS WEEK: two members, and their signatures are part of the
+//  deal the way every dictated name has been since week 4:
+//
+//      public void Save(string path)
+//      public void Load(string path)
+//
+//  The PATH is handed in and never written down inside them — which is
+//  what lets these checks hand your registry a scratch file in the
+//  system's temp folder rather than the one your program uses.
 //
 //  Nothing in here looks for a method by name on YOUR record, and nothing
 //  reads a word of what your Kind or your Line() actually SAY. They ask
@@ -47,8 +52,11 @@ internal static class StudentCode
         + "        public void Add(Lighthouse item) { _items.Add(item); }\n"
         + "        public int Count => _items.Count;\n"
         + "        public List<Lighthouse> All() { return new List<Lighthouse>(_items); }\n"
+        + "        public void Save(string path) { ... }      // week 8\n"
+        + "        public void Load(string path) { ... }      // week 8\n"
         + "    }\n"
-        + "Lighthouse is my example. Yours is whatever your topic is made of.\n";
+        + "Lighthouse is my example. Yours is whatever your topic is made of.\n"
+        + "(Find, Remove, Kind, Line and Everything are there too, from weeks 5 and 6.)\n";
 
     internal static Type RegistryType()
     {
@@ -472,5 +480,71 @@ internal static class StudentCode
             "Registry.Everything() handed back null instead of a list.");
 
         return (System.Collections.IList)result!;
+    }
+
+    // ── week 8 ─────────────────────────────────────────────────────────────
+    // Save and Load. Both are dictated by signature, and both take the path
+    // rather than knowing one.
+
+    internal static void Save(object registry, string path)
+    {
+        var method = RequireMethod("Save", typeof(string));
+
+        Assert.True(method.ReturnType == typeof(void),
+            $"Registry.Save hands back a {method.ReturnType.Name}, and it is dictated to "
+            + "hand back nothing:\n"
+            + "    public void Save(string path)");
+
+        try
+        {
+            method.Invoke(registry, new object?[] { path });
+        }
+        catch (TargetInvocationException e) when (e.InnerException != null)
+        {
+            throw new Xunit.Sdk.XunitException(
+                $"Registry.Save(\"{path}\") threw {e.InnerException.GetType().Name}:\n"
+                + $"    {e.InnerException.Message}\n"
+                + "Save is handed a full path to a file that may or may not exist yet, in a "
+                + "folder that does. Writing to it should be one call — and the path it "
+                + "writes to is the one it was HANDED, never a name written inside it.");
+        }
+    }
+
+    internal static void Load(object registry, string path)
+    {
+        var method = RequireMethod("Load", typeof(string));
+
+        Assert.True(method.ReturnType == typeof(void),
+            $"Registry.Load hands back a {method.ReturnType.Name}, and it is dictated to "
+            + "hand back nothing — it fills the registry in rather than answering:\n"
+            + "    public void Load(string path)");
+
+        try
+        {
+            method.Invoke(registry, new object?[] { path });
+        }
+        catch (TargetInvocationException e) when (e.InnerException != null)
+        {
+            throw new Xunit.Sdk.XunitException(
+                $"Registry.Load(\"{path}\") threw {e.InnerException.GetType().Name}:\n"
+                + $"    {e.InnerException.Message}\n"
+                + "Load has to cope with a path that has no file at it — that is a first run, "
+                + "not a failure. Ask File.Exists(path) before you read anything, and simply "
+                + "return when the answer is no.");
+        }
+    }
+
+    // A scratch file of this check's own, deleted first so a previous run
+    // cannot pass a check for you.
+    //
+    // ⚠️ Not a plain name: `dotnet test` runs with its working directory inside
+    // Project.Checks/bin/Debug/net10.0 while `dotnet run` stands at the top of
+    // your repo, so "registry.json" means two different files depending on
+    // which command you typed. Measured, not assumed.
+    internal static string Scratch(string name)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"project-check-{name}");
+        File.Delete(path);
+        return path;
     }
 }
