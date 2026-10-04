@@ -1,4 +1,6 @@
 // Project/Registry.cs
+using System.Text.Json;
+
 public class Registry : IListed
 {
     private readonly List<BallPark> _ballParks = new List<BallPark>();
@@ -46,6 +48,37 @@ public class Registry : IListed
 
         _ballParks.Remove(found);
         return true;
+    }
+
+    public void Save(string path)
+    {
+        string json = JsonSerializer.Serialize(_ballParks,
+            new JsonSerializerOptions { WriteIndented = true });
+
+        File.WriteAllText(path, json);
+    }
+
+    public void Load(string path)
+    {
+        if (!File.Exists(path))
+        {
+            return;
+        }
+
+        List<BallPark>? loaded =
+            JsonSerializer.Deserialize<List<BallPark>>(File.ReadAllText(path));
+
+        if (loaded == null)
+        {
+            return;
+        }
+
+        _ballParks.Clear();
+
+        foreach (BallPark item in loaded)
+        {
+            _ballParks.Add(item);
+        }
     }
 
     public string Kind => "REGISTRY";

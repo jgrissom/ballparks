@@ -46,4 +46,27 @@ public class RegistryTests
         registry.Add(new BallPark("American Family Field"));
         Assert.Equal(1, registry.Count);
     }
+
+    [Fact]
+    public void Week8_TheRegistrySurvivesARestart()
+    {
+        string path = Path.Combine(Path.GetTempPath(), "something-yours.json");
+        File.Delete(path);
+
+        var registry = new Registry();
+
+        var amfam = new BallPark("American Family Field");
+
+        registry.Add(amfam);
+
+        amfam.Visit();
+
+        registry.Save(path);
+
+        var reopened = new Registry();
+        reopened.Load(path);
+
+        Assert.Equal(1, reopened.Count);
+        Assert.Equal(1, reopened.All()[0].GamesSeen);
+    }
 }

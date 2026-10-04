@@ -1,0 +1,23 @@
+[
+  {
+    "Name": "Banana Field",
+    "Team": "Cubs",
+    "Capacity": 41649,
+    "GamesSeen": 0,
+    "Kind": "BALLPARK"
+  },
+  {
+    "Name": "Fenway Park",
+    "Team": "Red Sox",
+    "Capacity": 37755,
+    "GamesSeen": 3,
+    "Kind": "BALLPARK"
+  },
+  {
+    "Name": "Oracle Park",
+    "Team": "Giants",
+    "Capacity": 41265,
+    "GamesSeen": 0,
+    "Kind": "BALLPARK"
+  }
+]
