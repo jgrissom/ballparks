@@ -58,6 +58,29 @@ public class Registry : IListed
         File.WriteAllText(path, json);
     }
 
+    public void Load(string path)
+    {
+        if (!File.Exists(path))
+        {
+            return;
+        }
+
+        List<BallPark>? loaded =
+            JsonSerializer.Deserialize<List<BallPark>>(File.ReadAllText(path));
+
+        if (loaded == null)
+        {
+            return;
+        }
+
+        _ballParks.Clear();
+
+        foreach (BallPark item in loaded)
+        {
+            _ballParks.Add(item);
+        }
+    }
+
     public string Kind => "REGISTRY";
 
     public string Line() => $"{Topic} - {Count} on file";

@@ -1,6 +1,6 @@
 [
   {
-    "Name": "Wrigley Field",
+    "Name": "Banana Field",
     "Team": "Cubs",
     "Capacity": 41649,
     "GamesSeen": 0,
@@ -11,6 +11,13 @@
     "Team": "Red Sox",
     "Capacity": 37755,
     "GamesSeen": 1,
+    "Kind": "BALLPARK"
+  },
+  {
+    "Name": "Oracle Park",
+    "Team": "Giants",
+    "Capacity": 41265,
+    "GamesSeen": 0,
     "Kind": "BALLPARK"
   }
 ]

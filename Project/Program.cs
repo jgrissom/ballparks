@@ -7,10 +7,7 @@ registry.Add(new BallPark("Wrigley Field", "Cubs", 41649));
 registry.Add(new BallPark("Fenway Park", "Red Sox", 37755));
 registry.Add(new BallPark("Oracle Park", "Giants", 41265));
 
-// Week 7's rule, visible: the same name registered twice, refused quietly —
-// and the count is how you can tell it happened at all.
-registry.Add(registry.NewItem("Wrigley Field"));
-Console.WriteLine($"Registered \"Wrigley Field\" twice - {registry.Count} on file.");
+registry.Load(registryFile);
 
 // One I know something about. Find hands back the record the registry is
 // holding, so the change lands on the real one.
