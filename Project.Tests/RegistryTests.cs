@@ -69,4 +69,17 @@ public class RegistryTests
         Assert.Equal(1, reopened.Count);
         Assert.Equal(1, reopened.All()[0].GamesSeen);
     }
+
+    [Fact]
+    public void Week9_FindComesBackEmptyHanded()
+    {
+        var registry = new Registry();
+
+        var amfam = new BallPark("American Family Field");
+
+        registry.Add(amfam);
+
+        Assert.Same(amfam, registry.Find("American Family Field"));
+        Assert.Null(registry.Find("Banana Park"));
+    }
 }
