@@ -1,6 +1,6 @@
 [
   {
-    "Name": "Banana Field",
+    "Name": "Wrigley Field",
     "Team": "Cubs",
     "Capacity": 41649,
     "GamesSeen": 0,
@@ -10,7 +10,7 @@
     "Name": "Fenway Park",
     "Team": "Red Sox",
     "Capacity": 37755,
-    "GamesSeen": 3,
+    "GamesSeen": 10,
     "Kind": "BALLPARK"
   },
   {

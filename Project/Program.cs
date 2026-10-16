@@ -34,3 +34,27 @@ foreach (IListed thing in registry.Everything())
 
 registry.Save(registryFile);
 Console.WriteLine($"{registry.Count} on file, saved to {registryFile}.");
+
+Console.WriteLine();
+Console.Write("Search (a word, or Enter to skip): ");
+string? term = Console.ReadLine();
+
+if (!string.IsNullOrWhiteSpace(term))
+{
+    var found = registry.Matching(term.Trim());
+
+    Console.WriteLine(found.Count == 0
+        ? $"  Nothing on file with \"{term.Trim()}\" in it."
+        : $"  {found.Count} on file with \"{term.Trim()}\" in it.");
+}
+
+Console.WriteLine();
+Console.WriteLine($"On the books, as they arrived: {string.Join(", ", registry.Names())}");
+
+Console.WriteLine();
+Console.WriteLine("In order:");
+
+foreach (var record in registry.Sorted())
+{
+    Console.WriteLine($"  {record.Name}");
+}

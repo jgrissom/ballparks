@@ -26,15 +26,7 @@ public class Registry : IListed
 
     public BallPark? Find(string name)
     {
-        foreach (BallPark ballPark in _ballParks)
-        {
-            if (ballPark.Name == name)
-            {
-                return ballPark;
-            }
-        }
-
-        return null;
+        return _ballParks.FirstOrDefault(b => b.Name == name);
     }
 
     public bool Remove(string name)
@@ -75,10 +67,7 @@ public class Registry : IListed
 
         _ballParks.Clear();
 
-        foreach (BallPark item in loaded)
-        {
-            _ballParks.Add(item);
-        }
+        _ballParks.AddRange(loaded);
     }
 
     public string Kind => "REGISTRY";
@@ -97,5 +86,20 @@ public class Registry : IListed
         }
 
         return listing;
+    }
+
+    public List<BallPark> Matching(string term)
+    {
+        return _ballParks.Where(b => b.Name.Contains(term)).ToList();
+    }
+
+    public List<string> Names()
+    {
+        return _ballParks.Select(b => b.Name).ToList();
+    }
+
+    public List<BallPark> Sorted()
+    {
+        return _ballParks.OrderBy(b => b.Name).ToList();
     }
 }
