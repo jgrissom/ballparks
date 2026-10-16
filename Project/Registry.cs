@@ -92,4 +92,9 @@ public class Registry : IListed
     {
         return _ballParks.Where(b => b.Name.Contains(term)).ToList();
     }
+
+    public List<string> Names()
+    {
+        return _ballParks.Select(b => b.Name).ToList();
+    }
 }
