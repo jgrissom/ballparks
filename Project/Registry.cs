@@ -97,4 +97,9 @@ public class Registry : IListed
     {
         return _ballParks.Select(b => b.Name).ToList();
     }
+
+    public List<BallPark> Sorted()
+    {
+        return _ballParks.OrderBy(b => b.Name).ToList();
+    }
 }

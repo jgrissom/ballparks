@@ -50,3 +50,11 @@ if (!string.IsNullOrWhiteSpace(term))
 
 Console.WriteLine();
 Console.WriteLine($"On the books, as they arrived: {string.Join(", ", registry.Names())}");
+
+Console.WriteLine();
+Console.WriteLine("In order:");
+
+foreach (var record in registry.Sorted())
+{
+    Console.WriteLine($"  {record.Name}");
+}
