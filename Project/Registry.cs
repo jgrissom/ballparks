@@ -87,4 +87,9 @@ public class Registry : IListed
 
         return listing;
     }
+
+    public List<BallPark> Matching(string term)
+    {
+        return _ballParks.Where(b => b.Name.Contains(term)).ToList();
+    }
 }
