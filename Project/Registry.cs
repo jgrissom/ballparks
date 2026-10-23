@@ -42,25 +42,21 @@ public class Registry : IListed
         return true;
     }
 
-    public void Save(string path)
+    public void Save(ProjectContext db)
     {
-        string json = JsonSerializer.Serialize(_ballParks,
-            new JsonSerializerOptions { WriteIndented = true });
-
-        File.WriteAllText(path, json);
-    }
-
-    public void Load(string path)
-    {
-        if (!File.Exists(path))
+        foreach (BallPark item in _ballParks)
         {
-            return;
+            db.BallParks.Add(item);
         }
 
-        List<BallPark>? loaded =
-            JsonSerializer.Deserialize<List<BallPark>>(File.ReadAllText(path));
+        db.SaveChanges();
+    }
 
-        if (loaded == null)
+    public void Load(ProjectContext db)
+    {
+        List<BallPark> loaded = db.BallParks.OrderBy(item => item.Id).ToList();
+
+        if (loaded.Count == 0)
         {
             return;
         }

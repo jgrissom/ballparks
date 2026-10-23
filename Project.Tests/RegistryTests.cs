@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using Microsoft.EntityFrameworkCore;
 
 namespace Project.Tests;
 
@@ -50,8 +51,9 @@ public class RegistryTests
     [Fact]
     public void Week8_TheRegistrySurvivesARestart()
     {
-        string path = Path.Combine(Path.GetTempPath(), "something-yours.json");
-        File.Delete(path);
+        DbContextOptions<ProjectContext> options = new DbContextOptionsBuilder<ProjectContext>()
+           .UseInMemoryDatabase(Guid.NewGuid().ToString())
+           .Options;
 
         var registry = new Registry();
 
@@ -61,10 +63,10 @@ public class RegistryTests
 
         amfam.Visit();
 
-        registry.Save(path);
+        registry.Save(new ProjectContext(options));
 
         var reopened = new Registry();
-        reopened.Load(path);
+        reopened.Load(new ProjectContext(options));
 
         Assert.Equal(1, reopened.Count);
         Assert.Equal(1, reopened.All()[0].GamesSeen);
