@@ -46,7 +46,14 @@ public class Registry : IListed
     {
         foreach (BallPark item in _ballParks)
         {
-            db.BallParks.Add(item);
+            if (item.Id == 0)
+            {
+                db.BallParks.Add(item);
+            }
+            else
+            {
+                db.BallParks.Update(item);
+            }
         }
 
         db.SaveChanges();
