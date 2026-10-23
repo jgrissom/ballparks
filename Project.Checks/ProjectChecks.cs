@@ -5,16 +5,21 @@
 //  Run them from the top of your PROJECT repo — the other window:
 //      dotnet test Project.Checks
 //
-//  FOUR checks this week, and the task number is the check number.
+//  FIVE checks this week.
 //
-//  ⭐ CHECK 1 IS THE ONE TO READ. It asserts everything weeks 4 through 8
-//  built — including Find and Load, which Task 1 has you rewrite. It is
-//  green before you start, and its job is to still be green afterwards.
-//  That is what makes changing code that already works a safe thing to
-//  do.
+//  CHECK 1 is everything weeks 4 through 9 built, and it is green before
+//  you start. Checks 2 to 5 are this week's: a record shaped for a table,
+//  a migration, the registry surviving a restart in its new home, and a
+//  second save that changes the rows it already has.
 //
-//  Checks 2, 3 and 4 are the three questions your registry cannot answer
-//  yet: the ones that match, just the names, and in order.
+//  ⚠️ ⚠️ NOT ONE OF THESE CHECKS TOUCHES A DATABASE. Every one of them
+//  hands your context somewhere else to keep its rows — a table that
+//  lives inside the test run and disappears with it. That is why they
+//  answer in milliseconds on a machine with no network. It is also why
+//  they can say NOTHING about whether your connection string is right,
+//  whether your database exists, or whether you ever ran
+//  `dotnet ef database update`. Running your program is what tells you
+//  that, and it is the only thing that does.
 //
 //  ⚠️ Nothing in here knows a single thing about YOUR record's property
 //  names. Sorted() is checked by REFERENCE — three records go in, and I
@@ -45,13 +50,13 @@ public class ProjectChecks
     //      Descending   Zebra, Mango, Alpha   ← sorted backwards
     //
     // Add them in sorted-adjacent order and two of those collide, which
-    // would make check 4's message name the wrong cause.
+    // would make check 3's message name the wrong cause.
     private const string Zebra = "Zebra Crossing";
     private const string Alpha = "Alpha Street";
     private const string Mango = "Mango Lane";
 
     [Fact] // green before you start, and it has to STAY green
-    public void Check1_WeeksFourToEightStillHold()
+    public void Check1_WeeksFourToNineStillHold()
     {
         var type = StudentCode.ItemType();
 
@@ -134,57 +139,157 @@ public class ProjectChecks
             + "guard in Add, and it is still the deal:\n"
             + "    if (Find(item.Name) != null) { return; }");
 
-        // ── week 8: the round trip ─────────────────────────────────────────
+        // ⚠️ WEEK 8'S ROUND TRIP IS NOT IN HERE, and that is deliberate. It is
+        // the one thing your registry did last week that this week MOVES, so it
+        // is check 4 rather than a came-forward fact.
 
-        var path = StudentCode.Scratch("carried.json");
+        // ── week 9: the three questions, which are now just things it does ──
+
+        var asked = StudentCode.NewRegistry();
+        StudentCode.Add(asked, StudentCode.NewItem(asked, Mango));
+        StudentCode.Add(asked, StudentCode.NewItem(asked, Zebra));
+        StudentCode.Add(asked, StudentCode.NewItem(asked, Alpha));
+
+        var names = StudentCode.Names(asked);
+        Assert.True(names.Count == 3 && names[0] == Mango && names[2] == Alpha,
+            $"Registry.Names() handed back [{string.Join(", ", names)}] and should hand back "
+            + $"[{Mango}, {Zebra}, {Alpha}] — every name, in the order the records were "
+            + "added. Week 9, and nothing this week goes near it.");
+
+        var sorted = StudentCode.Sorted(asked);
+        Assert.True(sorted.Count == 3
+                    && ReferenceEquals(sorted[0], StudentCode.Find(asked, Alpha)),
+            "Registry.Sorted() no longer starts with the record that is first "
+            + "alphabetically. Week 9.");
+
+        Assert.True(ReferenceEquals(StudentCode.All(asked)[0], StudentCode.Find(asked, Mango)),
+            "⚠️ Sorted() SORTED THE REGISTRY. It answers a question about the records and "
+            + "leaves them exactly as it found them — OrderBy sorts a copy, List.Sort "
+            + "rearranges the list itself. Week 9, and it matters more now than it did "
+            + "then: the order your records come out of Load is the order they went into "
+            + "the table.");
+
+        var matching = StudentCode.Matching(asked, "a");
+        Assert.True(matching.Count == 3,
+            $"Registry.Matching(\"a\") handed back {matching.Count} records and should hand "
+            + $"back 3 — every one of {Mango}, {Zebra} and {Alpha} has an \"a\" in it. "
+            + "Week 9.");
+    }
+
+    // ── Check 2 — a record the database can keep ──────────────────────────
+
+    [Fact]
+    public void Check2_TheRecordIsShapedForATable()
+    {
+        using var db = StudentCode.NewContext(StudentCode.SomewhereElse("shape"));
+
+        var table = StudentCode.TheTable(db);
+        var item = StudentCode.ItemType();
+
+        var key = table.FindPrimaryKey();
+        Assert.True(key != null && key.Properties.Count == 1
+                    && key.Properties[0].Name == "Id",
+            $"{item.Name} has no Id for the database to tell its rows apart by"
+            + (key == null ? "" : $" — the key it found was {string.Join(", ", key.Properties.Select(k => k.Name))}")
+            + ".\n"
+            + "⚠️ A table needs one column that is different on every row, and EF Core "
+            + "looks for a property called Id. Nothing about your records has one — this "
+            + "is the database's own name for the row, and it is the only property this "
+            + "week asks you to add:\n"
+            + "    public int Id { get; set; }\n"
+            + $"👉 Next: put it at the top of your {item.Name} class.");
+
+        // Everything NewItem sets has to survive, so the name has to be a column.
+        var probe = StudentCode.NewItem(StudentCode.NewRegistry(), Mango);
+        var named = StudentCode.Properties(item)
+            .FirstOrDefault(pr => pr.PropertyType == typeof(string)
+                                  && Equals(pr.GetValue(probe), Mango));
+
+        Assert.True(named != null,
+            "Nothing on your record holds the name NewItem was given, so nothing can be "
+            + "stored. This is week 4's property and it should already be there.");
+
+        Assert.True(table.FindProperty(named!.Name) != null,
+            $"{item.Name}.{named.Name} holds the name, and it is not a column — so a record "
+            + "would go into the table without its name and come back nameless.\n"
+            + "⚠️ Check you have not put [NotMapped] on it.");
+    }
+
+    // ── Check 3 — the instructions for making the table ───────────────────
+
+    [Fact]
+    public void Check3_ThereIsAMigration()
+    {
+        var migrations = StudentCode.ItemType().Assembly
+            .GetTypes()
+            .Where(type => typeof(Microsoft.EntityFrameworkCore.Migrations.Migration)
+                               .IsAssignableFrom(type)
+                           && !type.IsAbstract)
+            .ToArray();
+
+        Assert.True(migrations.Length > 0,
+            "There is no migration in your project.\n"
+            + "⚠️ A migration is the instructions for making your table. It is a C# class "
+            + "that `dotnet ef` writes for you, by comparing what your context says now to "
+            + "what it said last time:\n"
+            + "    dotnet ef migrations add TheRegistryMovesIn\n"
+            + "👉 Next: run that from the top of your project repo, then open "
+            + "Project/Migrations/ and read the Up() method — it is your own record class "
+            + "with the column types filled in.\n"
+            + "⚠️ Making the migration does not make the table. `dotnet ef database update` "
+            + "is the one that talks to the server, and this check cannot see whether you "
+            + "ran it. Running your program is what tells you that.");
+    }
+
+    // ── Check 4 — and the registry survives a restart ─────────────────────
+
+    [Fact]
+    public void Check4_TheRegistrySurvivesARestart()
+    {
+        var somewhere = StudentCode.SomewhereElse("restart");
+
         var saved = StudentCode.NewRegistry();
         StudentCode.Add(saved, StudentCode.NewItem(saved, Mango));
         StudentCode.Add(saved, StudentCode.NewItem(saved, Zebra));
         StudentCode.Add(saved, StudentCode.NewItem(saved, Alpha));
 
+        // If the record keeps a count or a state of its own, move it — so the
+        // check can say whether it came back too.
         var record = StudentCode.Find(saved, Zebra)!;
         var verb = StudentCode.TheVerb(saved);
         var moved = verb == null ? Array.Empty<string>() : StudentCode.WhatItMoves(record, verb);
         var expected = StudentCode.Snapshot(record);
 
-        StudentCode.Save(saved, path);
+        using (var db = StudentCode.NewContext(somewhere))
+        {
+            StudentCode.Save(saved, db);
+        }
 
-        Assert.True(File.Exists(path),
-            "Registry.Save() was handed a path and no file appeared there. Week 8, and it "
-            + "still has to work.");
-
+        // A second registry, holding nothing, and a second context — reading
+        // the same table. Loading into the one that just saved proves nothing.
         var reopened = StudentCode.NewRegistry();
-        StudentCode.Load(reopened, path);
+
+        using (var db = StudentCode.NewContext(somewhere))
+        {
+            StudentCode.Load(reopened, db);
+        }
 
         Assert.True(StudentCode.Count(reopened) == 3,
-            $"Three records were saved, and loading them into a fresh registry gave "
-            + $"{StudentCode.Count(reopened)}. Week 8's Load.\n"
-            + "⚠️ If you swapped the foreach in Load for AddRange, check that the Clear() "
-            + "above it went with the loop rather than instead of it.");
-
-        // ⚠️ Loading onto a registry that ALREADY holds records — which is what
-        // your own Program.cs does. An empty one cannot tell you whether the
-        // Clear() is still there.
-        var already = StudentCode.NewRegistry();
-        StudentCode.Add(already, StudentCode.NewItem(already, Mango));
-        StudentCode.Add(already, StudentCode.NewItem(already, Zebra));
-        StudentCode.Add(already, StudentCode.NewItem(already, Alpha));
-        StudentCode.Load(already, path);
-
-        Assert.True(StudentCode.Count(already) == 3,
-            $"A registry already holding 3 records loaded a file holding 3 and now holds "
-            + $"{StudentCode.Count(already)}.\n"
-            + "⚠️ Loading is REPLACING, and the Clear() at the top of Load is what makes "
-            + "that true. Your own Program.cs seeds records and then loads on top of them, "
-            + "so this is the shape that actually bites.\n"
-            + "👉 Next: put _items.Clear(); back above the AddRange.");
+            $"Three records were saved and {StudentCode.Count(reopened)} came back.\n"
+            + (StudentCode.Count(reopened) == 0
+                ? "⚠️ Nothing came back at all. Either Save never called SaveChanges() — "
+                  + "Add and AddRange only write down what you INTEND to do — or Load is "
+                  + "not asking the DbSet for what is in it.\n"
+                : "")
+            + "👉 Next: read Save and Load side by side. Save: Add each record, then "
+            + "SaveChanges(). Load: read the rows into a list, then Clear() and AddRange.");
 
         foreach (var name in new[] { Zebra, Alpha, Mango })
         {
             Assert.True(StudentCode.Find(reopened, name) != null,
-                $"Three records came back and Find(\"{name}\") cannot see one of them. Week "
-                + "8 — the name did not survive the trip, which usually means the property "
-                + "NewItem puts it into has no public setter. [JsonInclude] above it.");
+                $"Three records came back and Find(\"{name}\") cannot see one of them. The "
+                + "name did not survive the trip, which usually means the property NewItem "
+                + "puts it into is not being stored — check 2 covers the shape.");
         }
 
         if (moved.Length > 0)
@@ -196,204 +301,122 @@ public class ProjectChecks
             {
                 Assert.True(Equals(expected[name], after[name]),
                     $"{verb!.Name}() moved {name} to {Show(expected[name])}, and after a "
-                    + $"save and a load it says {Show(after[name])}. That was week 8's "
-                    + "[JsonInclude], and it ships in your own code already made.");
+                    + $"save and a load it says {Show(after[name])}.\n"
+                    + "⚠️ Week 8 needed [JsonInclude] to get a private setter back out of a "
+                    + "file. EF Core does not — it sets private setters the same way your "
+                    + "class does. If this is at its default, the property is probably "
+                    + "[NotMapped], or it is worked out rather than kept.");
+            }
+        }
+
+        // ⚠️ THE FIRST RUN: an empty table must leave the registry alone.
+        var firstRun = StudentCode.NewRegistry();
+        StudentCode.Add(firstRun, StudentCode.NewItem(firstRun, Mango));
+
+        using (var db = StudentCode.NewContext(StudentCode.SomewhereElse("first-run")))
+        {
+            StudentCode.Load(firstRun, db);
+        }
+
+        Assert.True(StudentCode.Count(firstRun) == 1,
+            $"A registry holding 1 record loaded from an EMPTY table and now holds "
+            + $"{StudentCode.Count(firstRun)}.\n"
+            + "⚠️ This is the first run, and it is the one that bites: your Program.cs "
+            + "seeds records and THEN calls Load. On a table nobody has saved to yet, a "
+            + "Load that clears first throws your seeds away.\n"
+            + "⚠️ Week 8 had this too — it is what File.Exists at the top of Load was for. "
+            + "The table is always there, but on the first run it is empty.\n"
+            + "👉 Next: read the rows into a list FIRST, and return early when there are "
+            + "none of them.");
+
+        // And loading twice does not stack them up.
+        using (var db = StudentCode.NewContext(somewhere))
+        {
+            StudentCode.Load(reopened, db);
+        }
+
+        Assert.True(StudentCode.Count(reopened) == 3,
+            $"Loaded twice and the registry holds {StudentCode.Count(reopened)} records.\n"
+            + "⚠️ Loading is REPLACING. _items.Clear() before the AddRange.");
+    }
+
+    // ── Check 5 — the second save changes the rows it already has ─────────
+
+    [Fact]
+    public void Check5_ASecondSaveChangesTheRow()
+    {
+        var somewhere = StudentCode.SomewhereElse("second-save");
+
+        var first = StudentCode.NewRegistry();
+        StudentCode.Add(first, StudentCode.NewItem(first, Mango));
+        StudentCode.Add(first, StudentCode.NewItem(first, Zebra));
+
+        using (var db = StudentCode.NewContext(somewhere))
+        {
+            StudentCode.Save(first, db);
+        }
+
+        // The next run: one context, read at the start and written at the end,
+        // the way a Program.cs does it.
+        var nextRun = StudentCode.NewRegistry();
+        string[] moved = Array.Empty<string>();
+        Dictionary<string, object?> expected = new();
+        MethodInfo? verb = null;
+
+        using (var db = StudentCode.NewContext(somewhere))
+        {
+            StudentCode.Load(nextRun, db);
+
+            var record = StudentCode.Find(nextRun, Zebra);
+            Assert.True(record != null,
+                "Two records were saved and Find cannot see one of them after a Load. "
+                + "Check 4 covers this — make it green first.");
+
+            verb = StudentCode.TheVerb(nextRun);
+            if (verb != null)
+            {
+                moved = StudentCode.WhatItMoves(record!, verb);
+                expected = StudentCode.Snapshot(record!);
+            }
+
+            StudentCode.Save(nextRun, db);
+        }
+
+        var reopened = StudentCode.NewRegistry();
+
+        using (var db = StudentCode.NewContext(somewhere))
+        {
+            StudentCode.Load(reopened, db);
+        }
+
+        Assert.True(StudentCode.Count(reopened) == 2,
+            $"Two records were saved, loaded and saved again, and {StudentCode.Count(reopened)} "
+            + "came back.\n"
+            + "⚠️ A record that came out of the table already has a row. Saving it again "
+            + "has to CHANGE that row, not add a second one:\n"
+            + "    if (item.Id == 0)\n"
+            + "    {\n"
+            + "        db.YourRecords.Add(item);\n"
+            + "    }\n"
+            + "    else\n"
+            + "    {\n"
+            + "        db.YourRecords.Update(item);\n"
+            + "    }");
+
+        if (moved.Length > 0)
+        {
+            var after = StudentCode.Snapshot(StudentCode.Find(reopened, Zebra)!);
+
+            foreach (var name in moved)
+            {
+                Assert.True(Equals(expected[name], after[name]),
+                    $"{verb!.Name}() moved {name} to {Show(expected[name])} on the second run, "
+                    + $"and after saving it came back as {Show(after[name])}. The second save "
+                    + "has to change the row the table already has.");
             }
         }
     }
 
-    // ── Check 2 — the ones that match ──────────────────────────────────────
-
-    [Fact]
-    public void Check2_TheRegistryFindsEveryMatch()
-    {
-        const string Sable = "Sable Point Light";
-        const string Pointe = "Pointe Aux Barques";
-        const string Round = "The Roundhouse";
-
-        var registry = StudentCode.NewRegistry();
-        StudentCode.Add(registry, StudentCode.NewItem(registry, Sable));
-        StudentCode.Add(registry, StudentCode.NewItem(registry, Pointe));
-        StudentCode.Add(registry, StudentCode.NewItem(registry, Round));
-
-        var matches = StudentCode.Matching(registry, "Point");
-
-        Assert.True(matches.Count == 2,
-            $"Registry.Matching(\"Point\") handed back {matches.Count} records and should "
-            + "hand back 2.\n"
-            + $"The three names are \"{Sable}\", \"{Pointe}\" and \"{Round}\" — two of "
-            + "those have \"Point\" somewhere inside them.\n"
-            + "    public List<Lighthouse> Matching(string term)\n"
-            + "    {\n"
-            + "        return _items.Where(item => item.Name.Contains(term)).ToList();\n"
-            + "    }\n"
-            + "Where keeps the ones the question is TRUE for and drops the rest.\n"
-            + $"👉 Next: if you got 1, it is StartsWith rather than Contains — \"{Sable}\" "
-            + "has Point in the middle of it. If you got 0, the method is still handing back "
-            + "an empty list. If you got 3, the question inside the lambda is true of "
-            + "everything.");
-
-        Assert.True(ReferenceEquals(matches[0], StudentCode.Find(registry, Sable))
-                    && ReferenceEquals(matches[1], StudentCode.Find(registry, Pointe)),
-            $"Registry.Matching(\"Point\") found two records, and they are not the two I "
-            + $"expected in the order I expected: \"{Sable}\" then \"{Pointe}\".\n"
-            + "Where does not reorder anything — it keeps what is left in the order it "
-            + "found it, and those two were added in that order.\n"
-            + "⚠️ It also hands back the RECORDS the registry is holding, never copies of "
-            + "them. That is week 5's rule, and it is what lets a caller act on what came "
-            + "back.");
-
-        Assert.True(StudentCode.Matching(registry, "Roundhouse").Count == 1,
-            "Registry.Matching(\"Roundhouse\") found "
-            + $"{StudentCode.Matching(registry, "Roundhouse").Count} records and should find "
-            + $"1 — \"{Round}\" has it on the end.");
-
-        Assert.True(StudentCode.Matching(registry, "Lighthouse of Alexandria").Count == 0,
-            "Registry.Matching() found something for a term no record contains. It found "
-            + $"{StudentCode.Matching(registry, "Lighthouse of Alexandria").Count}.\n"
-            + "A question that is true of nothing hands back an empty list — not null, and "
-            + "not an error.");
-
-        Assert.True(StudentCode.Matching(registry, "").Count == 3,
-            "Registry.Matching(\"\") found "
-            + $"{StudentCode.Matching(registry, "").Count} records out of 3. Every string "
-            + "contains the empty string, so an empty search term matches everything. That "
-            + "is not a special case you have to write — it is what Contains already does, "
-            + "and it is the sensible answer for a search box nobody has typed in yet.");
-
-        Assert.True(StudentCode.Count(registry) == 3,
-            $"Asking Matching changed the registry — it holds {StudentCode.Count(registry)} "
-            + "records now and it held 3.\n"
-            + "⚠️ A query ASKS. Where builds a new sequence, ToList() copies that into a new "
-            + "list, and _items is untouched by both.");
-    }
-
-    // ── Check 3 — just the names ───────────────────────────────────────────
-
-    [Fact]
-    public void Check3_TheRegistryHandsBackItsNames()
-    {
-        var registry = StudentCode.NewRegistry();
-        StudentCode.Add(registry, StudentCode.NewItem(registry, Mango));
-        StudentCode.Add(registry, StudentCode.NewItem(registry, Zebra));
-        StudentCode.Add(registry, StudentCode.NewItem(registry, Alpha));
-
-        var names = StudentCode.Names(registry);
-
-        Assert.True(names.Count == 3,
-            $"Registry.Names() handed back {names.Count} names out of a registry holding 3. "
-            + $"(It gave: {Show(names)})\n"
-            + "One name per record, and Select is the word for \"turn every one of these "
-            + "into something else\":\n"
-            + "    public List<string> Names()\n"
-            + "    {\n"
-            + "        return _items.Select(item => item.Name).ToList();\n"
-            + "    }\n"
-            + "Where keeps SOME of the things. Select keeps all of them and changes what "
-            + "each one IS — here, from a record into the one string on it.\n"
-            + "👉 Next: swap Name for whatever your own name property is called.");
-
-        Assert.True(names.SequenceEqual(new[] { Mango, Zebra, Alpha }),
-            $"Registry.Names() gave {Show(names)} and should give\n"
-            + $"    {Show(new List<string> { Mango, Zebra, Alpha })}\n"
-            + "Two things this could be. Either it is handing back something other than "
-            + "the name — Select takes ONE property off each record, not the record's whole "
-            + "line — or it has put them in order, and Names() is not the method that "
-            + "does that. It hands them back in the registry's own order, which is the "
-            + "order they were added in. Sorting is check 4's job.");
-
-        var empty = StudentCode.NewRegistry();
-        Assert.True(StudentCode.Names(empty).Count == 0,
-            "Registry.Names() on an empty registry handed back "
-            + $"{StudentCode.Names(empty).Count} name(s). An empty registry has no names — "
-            + "and Select over nothing is an empty list rather than null or an error.");
-    }
-
-    // ── Check 4 — in order ─────────────────────────────────────────────────
-
-    [Fact]
-    public void Check4_TheRegistryComesBackInOrder()
-    {
-        var registry = StudentCode.NewRegistry();
-        StudentCode.Add(registry, StudentCode.NewItem(registry, Mango));
-        StudentCode.Add(registry, StudentCode.NewItem(registry, Zebra));
-        StudentCode.Add(registry, StudentCode.NewItem(registry, Alpha));
-
-        var sorted = StudentCode.Sorted(registry);
-
-        Assert.True(sorted.Count == 3,
-            $"Registry.Sorted() handed back {sorted.Count} records out of a registry holding "
-            + "3. Sorting does not drop anything — every record comes back, in a different "
-            + "order:\n"
-            + "    public List<Lighthouse> Sorted()\n"
-            + "    {\n"
-            + "        return _items.OrderBy(item => item.Name).ToList();\n"
-            + "    }\n"
-            + "👉 Next: swap Lighthouse and Name for your own record and its name property.");
-
-        // By REFERENCE, through the student's own Find — so this check never
-        // has to know what their name property is called.
-        var alpha = StudentCode.Find(registry, Alpha);
-        var mango = StudentCode.Find(registry, Mango);
-        var zebra = StudentCode.Find(registry, Zebra);
-
-        // Which record came back first says exactly what went wrong, which is
-        // why the three were added in the order they were.
-        string diagnosis =
-            ReferenceEquals(sorted[0], mango)
-                ? "That is the first record ADDED, so nothing sorted at all — Sorted() is "
-                  + "handing back the registry's own order.\n"
-                  + "👉 Next: OrderBy(item => item.Name), and ToList() on the end."
-            : ReferenceEquals(sorted[0], zebra)
-                ? "That is LAST alphabetically, so it sorted backwards — that is "
-                  + "OrderByDescending.\n"
-                  + "👉 Next: OrderBy is the one that starts at A."
-                : "That is not any of the three orders I can account for, so it is sorting "
-                  + "by something other than the name.\n"
-                  + "👉 Next: read what is inside the lambda — it should be the same property "
-                  + "NewItem sets and Find matches on.";
-
-        Assert.True(ReferenceEquals(sorted[0], alpha),
-            $"Registry.Sorted() put the wrong record first. The three names were added as "
-            + $"\"{Mango}\", \"{Zebra}\", \"{Alpha}\" — so in order they are \"{Alpha}\", "
-            + $"\"{Mango}\", \"{Zebra}\", and the first one is \"{Alpha}\".\n"
-            + "⚠️ " + diagnosis);
-
-        Assert.True(ReferenceEquals(sorted[1], mango) && ReferenceEquals(sorted[2], zebra),
-            $"Registry.Sorted() got the first one right and then went wrong. In order it is "
-            + $"\"{Alpha}\", \"{Mango}\", \"{Zebra}\".");
-
-        Assert.True(sorted.All(r => r != null)
-                    && sorted.Select(r => r!).Distinct().Count() == 3,
-            "Registry.Sorted() handed back the same record twice, or a null. Every record "
-            + "comes back exactly once.");
-
-        // ⚠️ The one this check really exists for.
-        var stillThere = StudentCode.All(registry).Cast<object?>().ToList();
-        Assert.True(ReferenceEquals(stillThere[0], mango)
-                    && ReferenceEquals(stillThere[1], zebra)
-                    && ReferenceEquals(stillThere[2], alpha),
-            "Sorting the registry SORTED THE REGISTRY. All() is handing records back in a "
-            + "different order from the one they were added in.\n"
-            + "⚠️ OrderBy sorts a COPY and hands the copy back — it never touches the list "
-            + "it was asked about. Whatever you did reached _items itself, and it was "
-            + "probably List.Sort, which rearranges in place.\n"
-            + "That distinction is the one to keep from this week: a query answers a "
-            + "question and leaves the thing alone. Your registry's own order is the order "
-            + "records arrived in, and Save writes them in that order — so a Sort in here "
-            + "quietly rewrites your file too.\n"
-            + "👉 Next: OrderBy, and let it build you a new sequence.");
-
-        var empty = StudentCode.NewRegistry();
-        Assert.True(StudentCode.Sorted(empty).Count == 0,
-            "Registry.Sorted() on an empty registry handed back "
-            + $"{StudentCode.Sorted(empty).Count} record(s). Sorting nothing gives you an "
-            + "empty list, not null and not an error.");
-    }
-
     private static string Show(object? value) =>
         value == null ? "null" : $"{value}";
-
-    private static string Show(List<string> names) =>
-        names.Count == 0 ? "(nothing)" : string.Join(", ", names.Select(n => $"\"{n}\""));
 }
