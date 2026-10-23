@@ -15,23 +15,20 @@
 //  That is the whole trick, and it is why NewItem has to be there even
 //  though your program barely uses it. It is the door.
 //
-//  ⚠️ NEW THIS WEEK: three members, and their signatures are part of the
-//  deal the way every dictated name has been since week 4:
+//  ⚠️ NEW THIS WEEK: a second dictated class name, and a new signature
+//  on two members you already have:
 //
-//      public List<string> Names()
-//      public List<YourRecord> Sorted()
-//      public List<YourRecord> Matching(string term)
+//      public class ProjectContext : DbContext
+//      public void Save(ProjectContext db)
+//      public void Load(ProjectContext db)
+//
+//  The context is handed IN, never made inside Registry — which is what lets
+//  these checks hand your registry a table that lives in the test run
+//  rather than the one on the college's server.
 //
 //  ⭐ Notice what these checks do NOT do: they never look for a property
 //  called Name. They cannot — yours might be Corner or Title or Elevation.
-//  So Sorted() is verified by REFERENCE: three records go in, and the
-//  checks ask your own Find for each one and compare what came back with
-//  what Sorted() put in each position. Names() is verified against the
-//  three strings the checks handed NewItem in the first place.
-//
-//  Week 8's Save and Load are still dictated, and the PATH is still handed
-//  in — which is what lets these checks hand your registry a scratch file
-//  in the system's temp folder rather than the one your program uses.
+//  Records are found through your own Find, and compared by reference.
 //
 //  Nothing in here looks for a method by name on YOUR record, and nothing
 //  reads a word of what your Kind or your Line() actually SAY. They ask
@@ -40,6 +37,7 @@
 //
 //  The actual checks are in ProjectChecks.cs next door.
 // ═══════════════════════════════════════════════════════════════════
+using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 
 namespace Project.Checks;
@@ -517,55 +515,205 @@ internal static class StudentCode
         return (System.Collections.IList)result!;
     }
 
-    // ── week 8 ─────────────────────────────────────────────────────────────
-    // Save and Load. Both are dictated by signature, and both take the path
-    // rather than knowing one.
+    // ── week 10 ────────────────────────────────────────────────────────────
+    // The database. TWO things are dictated here and nothing else is: the
+    // class has to be called ProjectContext, and Registry.Save/Load have to
+    // take one. What is IN it — the DbSet, the connection string, the table —
+    // is all yours.
+    //
+    // ⚠️ NOTHING BELOW OPENS A CONNECTION TO ANYTHING. Every check hands your
+    // context somewhere else to keep its rows: a table that lives inside the
+    // test run and disappears with it. That is why these run in milliseconds
+    // on a machine with no network, and why they can say nothing at all about
+    // whether YOUR connection string is right.
 
-    internal static void Save(object registry, string path)
+    internal static Type ContextType()
     {
-        var method = RequireMethod("Save", typeof(string));
+        var type = TheProject.GetTypes().FirstOrDefault(t => t.Name == "ProjectContext");
 
-        Assert.True(method.ReturnType == typeof(void),
-            $"Registry.Save hands back a {method.ReturnType.Name}, and it is dictated to "
-            + "hand back nothing:\n"
-            + "    public void Save(string path)");
+        Assert.True(type != null,
+            "There is no class called ProjectContext in your project.\n"
+            + "⚠️ It is the second dictated name in this whole contract, after Registry, "
+            + "and for the same reason: these checks have to find it without knowing your "
+            + "topic. Spelled exactly that way.\n"
+            + "    public class ProjectContext : DbContext\n"
+            + "👉 Next: make Project/ProjectContext.cs.");
+
+        Assert.True(typeof(Microsoft.EntityFrameworkCore.DbContext).IsAssignableFrom(type!),
+            $"ProjectContext does not inherit from DbContext — it inherits from "
+            + $"{type!.BaseType?.Name ?? "nothing"}.\n"
+            + "    public class ProjectContext : DbContext");
+
+        return type;
+    }
+
+    // Somewhere to keep rows that is not a database: a table named after this
+    // call, living only inside this test run.
+    //
+    // Built by reflection because ProjectContext is YOUR class — these checks
+    // are compiled before it exists. DbContextOptionsBuilder<T> needs T at
+    // compile time, so the type is made at run time instead.
+    internal static object SomewhereElse(string name)
+    {
+        var ctx = ContextType();
+        var builderType = typeof(Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<>)
+            .MakeGenericType(ctx);
+
+        var builder = (Microsoft.EntityFrameworkCore.DbContextOptionsBuilder)
+            Activator.CreateInstance(builderType)!;
+
+        builder.UseInMemoryDatabase($"project-check-{name}-{Guid.NewGuid()}");
+
+        // DeclaredOnly: DbContextOptionsBuilder<T> hides the base class's own
+        // Options property rather than overriding it, so asking for "Options"
+        // without this finds two and throws AmbiguousMatchException.
+        return builderType
+            .GetProperty("Options", BindingFlags.Public | BindingFlags.Instance
+                                    | BindingFlags.DeclaredOnly)!
+            .GetValue(builder)!;
+    }
+
+    // One context, pointed at the throwaway table above.
+    internal static IDisposable NewContext(object options)
+    {
+        var ctx = ContextType();
+        var ctor = ctx.GetConstructors()
+            .FirstOrDefault(c => c.GetParameters().Length == 1
+                                 && c.GetParameters()[0].ParameterType.IsInstanceOfType(options));
+
+        Assert.True(ctor != null,
+            "ProjectContext has no constructor that takes a DbContextOptions, so nothing "
+            + "can tell it where to keep its rows except the connection string.\n"
+            + "⚠️ This is what lets your project be checked at all — mine, and the ones you "
+            + "write yourself — without a database, a password or a network. Two "
+            + "constructors, and the empty one still has to be there for `dotnet ef`:\n"
+            + "    public ProjectContext() { }\n"
+            + "    public ProjectContext(DbContextOptions<ProjectContext> options)\n"
+            + "        : base(options) { }\n"
+            + "👉 Next: add both to ProjectContext.cs.");
+
+        return (IDisposable)ctor!.Invoke(new[] { options });
+    }
+
+    // Your record, as EF Core understands it. Building the model reads your
+    // classes; it opens no connection.
+    internal static Microsoft.EntityFrameworkCore.Metadata.IEntityType TheTable(object context)
+    {
+        Microsoft.EntityFrameworkCore.Metadata.IModel model;
+        try
+        {
+            model = (Microsoft.EntityFrameworkCore.Metadata.IModel)
+                ContextType().GetProperty("Model")!.GetValue(context)!;
+        }
+        catch (TargetInvocationException e) when (e.InnerException != null)
+        {
+            string message = e.InnerException.Message;
+            throw new Xunit.Sdk.XunitException(
+                "EF Core could not work out a table for your record:\n"
+                + $"    {message}\n"
+                + (message.Contains("Cannot bind")
+                    ? "⚠️ A property with only { get; } is left out of the table, so EF Core "
+                      + "cannot hand the constructor that value when it reads a record back. "
+                      + "Give the property a private set:\n"
+                      + "    public string Name { get; private set; }\n"
+                    : "")
+                + (message.Contains("requires a primary key") && !message.Contains($"'{ItemType().Name}'")
+                    ? "⚠️ That names a class your context never mentions. One of your record's "
+                      + "properties holds that class, so EF Core tried to make a table for it "
+                      + "too. Put [NotMapped] on that property, and\n"
+                      + "    using System.ComponentModel.DataAnnotations.Schema;\n"
+                      + "   at the top of the file.\n"
+                    : "")
+                + "👉 Next: run `dotnet ef migrations add` and read the same message there.");
+        }
+
+        var entity = model.FindEntityType(ItemType());
+
+        Assert.True(entity != null,
+            $"EF Core does not know about {ItemType().Name} at all.\n"
+            + "⚠️ A class becomes a table by being named in the context:\n"
+            + $"    public DbSet<{ItemType().Name}> {ItemType().Name}s {{ get; set; }}\n"
+            + "The property name is yours — it becomes the table's name. The type in the "
+            + "angle brackets is what matters.\n"
+            + "👉 Next: add that line to ProjectContext.cs.");
+
+        return entity!;
+    }
+
+    // Save and Load, dictated by signature — and the signature changed this
+    // week. Both take the context rather than knowing where anything is.
+
+    private static MethodInfo RequirePersistence(string name)
+    {
+        var method = RegistryType().GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .FirstOrDefault(m => m.Name == name
+                                 && m.GetParameters().Length == 1
+                                 && m.GetParameters()[0].ParameterType == ContextType());
+
+        if (method == null)
+        {
+            var byName = RegistryType().GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                .Where(m => m.Name == name)
+                .Select(m => $"{name}({string.Join(", ", m.GetParameters().Select(x => Pretty(x.ParameterType)))})")
+                .ToArray();
+
+            throw new Xunit.Sdk.XunitException(
+                $"Registry has no {name} that takes a ProjectContext.\n"
+                + (byName.Length == 0
+                    ? $"    there is no {name} on Registry at all\n"
+                    : $"    yours:  {string.Join("\n            ", byName)}\n")
+                + $"    wanted: {name}(ProjectContext)\n"
+                + "⚠️ Week 8 handed these a path to a file. This week they are handed the "
+                + "database instead, and that is the whole change:\n"
+                + $"    public void {name}(ProjectContext db)\n"
+                + "👉 Next: change the parameter in Registry.cs. The types in the brackets "
+                + "are part of a method's identity in C#, so the old one does not count.");
+        }
+
+        Assert.True(method!.ReturnType == typeof(void),
+            $"Registry.{name} hands back a {method.ReturnType.Name}, and it is dictated to "
+            + $"hand back nothing:\n    public void {name}(ProjectContext db)");
+
+        return method;
+    }
+
+    internal static void Save(object registry, object context)
+    {
+        var method = RequirePersistence("Save");
 
         try
         {
-            method.Invoke(registry, new object?[] { path });
+            method.Invoke(registry, new object?[] { context });
         }
         catch (TargetInvocationException e) when (e.InnerException != null)
         {
             throw new Xunit.Sdk.XunitException(
-                $"Registry.Save(\"{path}\") threw {e.InnerException.GetType().Name}:\n"
+                $"Registry.Save threw {e.InnerException.GetType().Name}:\n"
                 + $"    {e.InnerException.Message}\n"
-                + "Save is handed a full path to a file that may or may not exist yet, in a "
-                + "folder that does. Writing to it should be one call — and the path it "
-                + "writes to is the one it was HANDED, never a name written inside it.");
+                + "⚠️ Every record is one of two things, and its Id says which. Id == 0 "
+                + "has never been saved (Add). Any other Id is a row the table already has "
+                + "(Update) — Add on one of those tries to put the same row in twice. Then "
+                + "SaveChanges() to send any of it.");
         }
     }
 
-    internal static void Load(object registry, string path)
+    internal static void Load(object registry, object context)
     {
-        var method = RequireMethod("Load", typeof(string));
-
-        Assert.True(method.ReturnType == typeof(void),
-            $"Registry.Load hands back a {method.ReturnType.Name}, and it is dictated to "
-            + "hand back nothing — it fills the registry in rather than answering:\n"
-            + "    public void Load(string path)");
+        var method = RequirePersistence("Load");
 
         try
         {
-            method.Invoke(registry, new object?[] { path });
+            method.Invoke(registry, new object?[] { context });
         }
         catch (TargetInvocationException e) when (e.InnerException != null)
         {
             throw new Xunit.Sdk.XunitException(
-                $"Registry.Load(\"{path}\") threw {e.InnerException.GetType().Name}:\n"
+                $"Registry.Load threw {e.InnerException.GetType().Name}:\n"
                 + $"    {e.InnerException.Message}\n"
-                + "Load has to cope with a path that has no file at it — that is a first run, "
-                + "not a failure. Ask File.Exists(path) before you read anything, and simply "
-                + "return when the answer is no.");
+                + "⚠️ Load has to cope with a table that nobody has saved to yet. The table "
+                + "is always there — the migration made it — but on a first run it is "
+                + "EMPTY, and that is not a failure. Week 8 asked File.Exists for exactly "
+                + "the same reason.");
         }
     }
 
