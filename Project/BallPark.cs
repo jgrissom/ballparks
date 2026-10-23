@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 
 public class BallPark : IListed
 {
+    public int Id { get; set; }
     private string _name = "unknown";
     public string Name                               // rule → explicit field
     {
