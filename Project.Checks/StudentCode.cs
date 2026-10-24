@@ -233,6 +233,11 @@ internal static class StudentCode
 
     internal static Type FindReturnType() => RequireMethod("Find", typeof(string)).ReturnType;
 
+    // Week 11: the database's own number for a record's row. Week 10's check 2
+    // already requires the property, so it is there by now.
+    internal static object? IdOf(object item) =>
+        item.GetType().GetProperty("Id")?.GetValue(item);
+
     internal static object? Find(object registry, string name)
     {
         var method = RequireMethod("Find", typeof(string));
