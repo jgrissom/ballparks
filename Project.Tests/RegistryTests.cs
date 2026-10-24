@@ -109,4 +109,31 @@ public class RegistryTests
         Assert.Same(amfam, registry.Find("American Family Field"));
         Assert.Null(registry.Find("Banana Park"));
     }
+
+    [Fact]
+    public void Week11_ARemovedRecordStaysGone()
+    {
+        DbContextOptions<ProjectContext> options = new DbContextOptionsBuilder<ProjectContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        Registry registry = new Registry();
+        BallPark kept = registry.NewItem("a name of yours");
+        BallPark removed = registry.NewItem("Fenway Park");
+        registry.Add(kept);
+        registry.Add(removed);
+        registry.Save(new ProjectContext(options));
+
+        ProjectContext db = new ProjectContext(options);
+        Registry nextRun = new Registry();
+        nextRun.Load(db);
+        nextRun.Remove("Fenway Park");
+        nextRun.Save(db);
+
+        Registry reopened = new Registry();
+        reopened.Load(new ProjectContext(options));
+
+        Assert.Equal(1, reopened.Count);
+        Assert.Null(reopened.Find("Fenway Park"));
+    }
 }
