@@ -55,7 +55,13 @@ public class Registry : IListed
                 db.BallParks.Update(item);
             }
         }
-
+        foreach (BallPark row in db.BallParks.ToList())
+        {
+            if (!_ballParks.Any(item => item.Id == row.Id))
+            {
+                db.BallParks.Remove(row);
+            }
+        }
         db.SaveChanges();
     }
 
