@@ -5,26 +5,22 @@
 //  Run them from the top of your PROJECT repo — the other window:
 //      dotnet test Project.Checks
 //
-//  FIVE checks this week.
+//  TWO checks this week.
 //
-//  CHECK 1 is everything weeks 4 through 9 built, and it is green before
-//  you start. Checks 2 to 5 are this week's: a record shaped for a table,
-//  a migration, the registry surviving a restart in its new home, and a
-//  second save that changes the rows it already has.
+//  CHECK 1 is everything weeks 4 through 10 built — the database move
+//  included — and it is green before you start. Check 2 is this week's:
+//  a record you remove is gone from the table, so it stays gone.
 //
 //  ⚠️ ⚠️ NOT ONE OF THESE CHECKS TOUCHES A DATABASE. Every one of them
 //  hands your context somewhere else to keep its rows — a table that
 //  lives inside the test run and disappears with it. That is why they
 //  answer in milliseconds on a machine with no network. It is also why
-//  they can say NOTHING about whether your connection string is right,
-//  whether your database exists, or whether you ever ran
-//  `dotnet ef database update`. Running your program is what tells you
-//  that, and it is the only thing that does.
+//  they can say NOTHING about whether your connection string is right.
+//  Running your program is what tells you that, and it is the only thing
+//  that does.
 //
 //  ⚠️ Nothing in here knows a single thing about YOUR record's property
-//  names. Sorted() is checked by REFERENCE — three records go in, and I
-//  ask your own Find for each one and compare. Read StudentCode.cs if you
-//  want to see how.
+//  names. Read StudentCode.cs if you want to see how.
 // ═══════════════════════════════════════════════════════════════════
 using System.Reflection;
 
@@ -56,7 +52,7 @@ public class ProjectChecks
     private const string Mango = "Mango Lane";
 
     [Fact] // green before you start, and it has to STAY green
-    public void Check1_WeeksFourToNineStillHold()
+    public void Check1_WeeksFourToTenStillHold()
     {
         var type = StudentCode.ItemType();
 
@@ -174,12 +170,32 @@ public class ProjectChecks
             $"Registry.Matching(\"a\") handed back {matching.Count} records and should hand "
             + $"back 3 — every one of {Mango}, {Zebra} and {Alpha} has an \"a\" in it. "
             + "Week 9.");
+
+        // ── week 10: the database, which is now just where the records live ──
+
+        Still("check 2 — a record shaped for a table", Week10_TheRecordIsShapedForATable);
+        Still("check 3 — a migration", Week10_ThereIsAMigration);
+        Still("check 4 — the registry survives a restart", Week10_TheRegistrySurvivesARestart);
+        Still("check 5 — a second save changes the row", Week10_ASecondSaveChangesTheRow);
     }
 
-    // ── Check 2 — a record the database can keep ──────────────────────────
+    // A week-10 check, run again. If it fails, say whose it was.
+    private static void Still(string which, Action check)
+    {
+        try
+        {
+            check();
+        }
+        catch (Xunit.Sdk.XunitException e)
+        {
+            throw new Xunit.Sdk.XunitException(
+                $"This was week 10's {which}, and it still has to hold:\n{e.Message}");
+        }
+    }
 
-    [Fact]
-    public void Check2_TheRecordIsShapedForATable()
+    // ── Week 10's check 2 — a record the database can keep ──────────────────────────
+
+    private static void Week10_TheRecordIsShapedForATable()
     {
         using var db = StudentCode.NewContext(StudentCode.SomewhereElse("shape"));
 
@@ -215,10 +231,9 @@ public class ProjectChecks
             + "⚠️ Check you have not put [NotMapped] on it.");
     }
 
-    // ── Check 3 — the instructions for making the table ───────────────────
+    // ── Week 10's check 3 — the instructions for making the table ───────────────────
 
-    [Fact]
-    public void Check3_ThereIsAMigration()
+    private static void Week10_ThereIsAMigration()
     {
         var migrations = StudentCode.ItemType().Assembly
             .GetTypes()
@@ -241,10 +256,9 @@ public class ProjectChecks
             + "ran it. Running your program is what tells you that.");
     }
 
-    // ── Check 4 — and the registry survives a restart ─────────────────────
+    // ── Week 10's check 4 — and the registry survives a restart ─────────────────────
 
-    [Fact]
-    public void Check4_TheRegistrySurvivesARestart()
+    private static void Week10_TheRegistrySurvivesARestart()
     {
         var somewhere = StudentCode.SomewhereElse("restart");
 
@@ -340,10 +354,9 @@ public class ProjectChecks
             + "⚠️ Loading is REPLACING. _items.Clear() before the AddRange.");
     }
 
-    // ── Check 5 — the second save changes the rows it already has ─────────
+    // ── Week 10's check 5 — the second save changes the rows it already has ─────────
 
-    [Fact]
-    public void Check5_ASecondSaveChangesTheRow()
+    private static void Week10_ASecondSaveChangesTheRow()
     {
         var somewhere = StudentCode.SomewhereElse("second-save");
 
@@ -389,6 +402,13 @@ public class ProjectChecks
             StudentCode.Load(reopened, db);
         }
 
+        Assert.True(StudentCode.Count(reopened) != 0,
+            "Two records were saved, loaded and saved again, and NONE came back. Nothing was "
+            + "removed.\n"
+            + "⚠️ Save took out the rows your list DOES hold. Look at this week's loop in Save: "
+            + "the ! in front of _yourList.Any(...) is what makes it take out only the rows "
+            + "your list doesn't hold.");
+
         Assert.True(StudentCode.Count(reopened) == 2,
             $"Two records were saved, loaded and saved again, and {StudentCode.Count(reopened)} "
             + "came back.\n"
@@ -414,6 +434,112 @@ public class ProjectChecks
                     + $"and after saving it came back as {Show(after[name])}. The second save "
                     + "has to change the row the table already has.");
             }
+        }
+    }
+
+    // ── Check 2 — a record you remove stays gone ──────────────────────────
+
+    [Fact]
+    public void Check2_ARemovedRecordStaysGone()
+    {
+        var somewhere = StudentCode.SomewhereElse("removed");
+
+        var first = StudentCode.NewRegistry();
+        StudentCode.Add(first, StudentCode.NewItem(first, Mango));
+        StudentCode.Add(first, StudentCode.NewItem(first, Zebra));
+        StudentCode.Add(first, StudentCode.NewItem(first, Alpha));
+
+        using (var db = StudentCode.NewContext(somewhere))
+        {
+            StudentCode.Save(first, db);
+        }
+
+        var before = new Dictionary<string, object?>();
+        var saved = StudentCode.NewRegistry();
+
+        using (var db = StudentCode.NewContext(somewhere))
+        {
+            StudentCode.Load(saved, db);
+        }
+
+        foreach (var name in new[] { Mango, Alpha })
+        {
+            var record = StudentCode.Find(saved, name);
+            Assert.True(record != null,
+                "Three records were saved and Find cannot see one of them after a Load. "
+                + "Check 1 covers the round trip — make it green first.");
+            before[name] = StudentCode.IdOf(record!);
+        }
+
+        // The next run: one context, read at the start and written at the end,
+        // the way a Program.cs does it. Zebra is taken off in between.
+        var nextRun = StudentCode.NewRegistry();
+
+        using (var db = StudentCode.NewContext(somewhere))
+        {
+            StudentCode.Load(nextRun, db);
+
+            Assert.True(StudentCode.Remove(nextRun, Zebra),
+                $"Remove(\"{Zebra}\") said false on a registry that had just loaded it. "
+                + "Check 1 covers Remove — make it green first.");
+
+            StudentCode.Save(nextRun, db);
+        }
+
+        var reopened = StudentCode.NewRegistry();
+
+        using (var db = StudentCode.NewContext(somewhere))
+        {
+            StudentCode.Load(reopened, db);
+        }
+
+        Assert.True(StudentCode.Count(reopened) <= 3,
+            $"Three records were saved, one was removed, and the next Load found "
+            + $"{StudentCode.Count(reopened)}.\n"
+            + "⚠️ Save put records in a second time. This week's loop only takes rows OUT — "
+            + "it never adds any. Emptying the table and adding your list back is not the "
+            + "same thing, and it gives every record a new row.");
+
+        Assert.True(!(StudentCode.Count(reopened) == 1 && StudentCode.Find(reopened, Zebra) != null),
+            $"\"{Zebra}\" was removed, and it is the ONLY record left. The two that were kept "
+            + "are gone.\n"
+            + "⚠️ Save took out the rows your list DOES hold, and kept the one it doesn't. The "
+            + "! in front of _yourList.Any(...) turns the question round:\n"
+            + "    if (!_yourList.Any(item => item.Id == row.Id))");
+
+        Assert.True(StudentCode.Find(reopened, Zebra) == null,
+            $"\"{Zebra}\" was removed and the registry saved, and the next Load put it "
+            + "straight back.\n"
+            + "⚠️ Save adds and updates the records in your list. A removed record isn't in "
+            + "the list any more, so nothing in Save ever mentions it, and its row stays in "
+            + "the table. That is why it comes back on the next run.\n"
+            + "👉 Next: in Save, after the loop and before SaveChanges, read the table and "
+            + "take out every row whose Id no record in your list has:\n"
+            + "    foreach (YourRecord row in db.YourRecords.ToList())\n"
+            + "    {\n"
+            + "        if (!_yourList.Any(item => item.Id == row.Id))\n"
+            + "        {\n"
+            + "            db.YourRecords.Remove(row);\n"
+            + "        }\n"
+            + "    }");
+
+        Assert.True(StudentCode.Count(reopened) == 2
+                    && StudentCode.Find(reopened, Mango) != null
+                    && StudentCode.Find(reopened, Alpha) != null,
+            $"One of three records was removed and the next Load found "
+            + $"{StudentCode.Count(reopened)}. It should find the two that weren't removed, "
+            + $"{Mango} and {Alpha}.\n"
+            + "⚠️ Take out only the rows no record in your list has. Every other row stays.");
+
+        foreach (var name in new[] { Mango, Alpha })
+        {
+            var now = StudentCode.IdOf(StudentCode.Find(reopened, name)!);
+            Assert.True(Equals(before[name], now),
+                $"\"{name}\" wasn't removed, and its Id went from {Show(before[name])} to "
+                + $"{Show(now)}.\n"
+                + "⚠️ Emptying the table and putting every record back in looks the same "
+                + "when you run your program, and it gives every record a new row. Take out "
+                + "the one row that isn't in your list, and leave the others alone.");
         }
     }
 
