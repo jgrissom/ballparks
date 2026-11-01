@@ -40,6 +40,7 @@ if (withDetails != null)
     Console.WriteLine($"{withDetails.Games.Count} details on file for that record.");
 }
 registry.Save(db);
+Console.WriteLine($"With details: {string.Join(", ", registry.WithDetails(db))}");
 Console.WriteLine($"{registry.Count} on file, saved to the database.");
 
 Console.WriteLine();

@@ -81,6 +81,11 @@ public class Registry : IListed
         _ballParks.AddRange(loaded);
     }
 
+    public List<string> WithDetails(ProjectContext db)
+    {
+        return db.BallParks.Where(item => item.Games.Any()).OrderBy(item => item.Name).Select(item => item.Name).ToList();
+    }
+
     public string Kind => "REGISTRY";
 
     public string Line() => $"{Topic} - {Count} on file";
