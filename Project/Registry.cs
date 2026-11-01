@@ -1,5 +1,6 @@
 // Project/Registry.cs
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 
 public class Registry : IListed
 {
@@ -68,7 +69,7 @@ public class Registry : IListed
 
     public void Load(ProjectContext db)
     {
-        List<BallPark> loaded = db.BallParks.OrderBy(item => item.Id).ToList();
+        List<BallPark> loaded = db.BallParks.Include(item => item.Games).OrderBy(item => item.Id).ToList();
 
         if (loaded.Count == 0)
         {

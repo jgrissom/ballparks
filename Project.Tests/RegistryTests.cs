@@ -154,6 +154,6 @@ public class RegistryTests
         Registry reopened = new Registry();
         reopened.Load(new ProjectContext(options));
 
-        Assert.Equal(2, reopened.Find("Brewers")!.Games.Count);
+        Assert.Equal(2, reopened.Find("Wrigley Field")!.Games.Count);
     }
 }
