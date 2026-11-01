@@ -46,6 +46,42 @@ namespace Project.Migrations
 
                     b.ToTable("BallParks");
                 });
+
+            modelBuilder.Entity("Game", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BallParkId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("OpponentName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BallParkId");
+
+                    b.ToTable("Games");
+                });
+
+            modelBuilder.Entity("Game", b =>
+                {
+                    b.HasOne("BallPark", null)
+                        .WithMany("Games")
+                        .HasForeignKey("BallParkId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("BallPark", b =>
+                {
+                    b.Navigation("Games");
+                });
 #pragma warning restore 612, 618
         }
     }

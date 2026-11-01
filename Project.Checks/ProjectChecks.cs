@@ -5,11 +5,12 @@
 //  Run them from the top of your PROJECT repo — the other window:
 //      dotnet test Project.Checks
 //
-//  TWO checks this week.
+//  FOUR checks this week.
 //
-//  CHECK 1 is everything weeks 4 through 10 built — the database move
-//  included — and it is green before you start. Check 2 is this week's:
-//  a record you remove is gone from the table, so it stays gone.
+//  CHECK 1 is everything weeks 4 through 11 built — the database and a
+//  record that stays removed included — and it is green before you start.
+//  Checks 2 to 4 are this week's: each record has many details, the details
+//  come back with their record, and the database answers a question.
 //
 //  ⚠️ ⚠️ NOT ONE OF THESE CHECKS TOUCHES A DATABASE. Every one of them
 //  hands your context somewhere else to keep its rows — a table that
@@ -52,7 +53,7 @@ public class ProjectChecks
     private const string Mango = "Mango Lane";
 
     [Fact] // green before you start, and it has to STAY green
-    public void Check1_WeeksFourToTenStillHold()
+    public void Check1_WeeksFourToElevenStillHold()
     {
         var type = StudentCode.ItemType();
 
@@ -177,6 +178,24 @@ public class ProjectChecks
         Still("check 3 — a migration", Week10_ThereIsAMigration);
         Still("check 4 — the registry survives a restart", Week10_TheRegistrySurvivesARestart);
         Still("check 5 — a second save changes the row", Week10_ASecondSaveChangesTheRow);
+
+        // ── week 11: a removed record stays gone ──
+
+        Still11("check 2 — a removed record stays gone", Week11_ARemovedRecordStaysGone);
+    }
+
+    // A week-11 check, run again. If it fails, say whose it was.
+    private static void Still11(string which, Action check)
+    {
+        try
+        {
+            check();
+        }
+        catch (Xunit.Sdk.XunitException e)
+        {
+            throw new Xunit.Sdk.XunitException(
+                $"This was week 11's {which}, and it still has to hold:\n{e.Message}");
+        }
     }
 
     // A week-10 check, run again. If it fails, say whose it was.
@@ -437,10 +456,9 @@ public class ProjectChecks
         }
     }
 
-    // ── Check 2 — a record you remove stays gone ──────────────────────────
+    // ── Week 11's check 2 — a record you remove stays gone ──────────────────
 
-    [Fact]
-    public void Check2_ARemovedRecordStaysGone()
+    private static void Week11_ARemovedRecordStaysGone()
     {
         var somewhere = StudentCode.SomewhereElse("removed");
 
@@ -540,6 +558,176 @@ public class ProjectChecks
                 + "⚠️ Emptying the table and putting every record back in looks the same "
                 + "when you run your program, and it gives every record a new row. Take out "
                 + "the one row that isn't in your list, and leave the others alone.");
+        }
+    }
+
+    // ── Check 2 — each record has many details ───────────────────────────────
+
+    [Fact]
+    public void Check2_EachRecordHasManyDetails()
+    {
+        var registry = StudentCode.NewRegistry();
+        var detail = StudentCode.DetailType();
+
+        using var db = StudentCode.NewContext(StudentCode.SomewhereElse("details-shape"));
+        var nav = StudentCode.DetailsNavigation(db);
+
+        var record = StudentCode.NewItem(registry, Mango);
+        var list = StudentCode.DetailsOf(record, nav);
+
+        Assert.True(list.Count == 0,
+            $"A brand-new {record.GetType().Name} already has {list.Count} {detail.Name}s in its "
+            + "list. Start the list empty.");
+
+        var made = StudentCode.NewDetail(registry, "First one");
+        Assert.True(detail.IsInstanceOfType(made),
+            $"NewDetail handed back a {made.GetType().Name}, not a {detail.Name}.");
+
+        list.Add(made);
+        Assert.True(StudentCode.DetailsOf(record, nav).Count == 1,
+            $"A {detail.Name} was added to {record.GetType().Name}.{nav.Name} and the list "
+            + "still holds none. The property has to hand back the list the record keeps, "
+            + "not a copy of it.");
+
+        Assert.True(StudentCode.AMigrationMakes(detail),
+            $"No migration in your project knows about {detail.Name}, so `dotnet ef database "
+            + "update` has nothing that makes its table.\n"
+            + "👉 Next: from the top of your project repo,\n"
+            + "    dotnet ef migrations add ASecondTable --project Project\n"
+            + "then read the new file in Project/Migrations before you run "
+            + "`dotnet ef database update --project Project`.");
+    }
+
+    // ── Check 3 — the details come back with their record ───────────────────
+
+    [Fact]
+    public void Check3_TheDetailsComeBack()
+    {
+        var somewhere = StudentCode.SomewhereElse("details-back");
+        var nav = Shape(somewhere);
+
+        var first = StudentCode.NewRegistry();
+        foreach (var name in new[] { Mango, Zebra, Alpha })
+        {
+            StudentCode.Add(first, StudentCode.NewItem(first, name));
+        }
+
+        var mango = StudentCode.Find(first, Mango)!;
+        StudentCode.DetailsOf(mango, nav).Add(StudentCode.NewDetail(first, "First one"));
+        StudentCode.DetailsOf(mango, nav).Add(StudentCode.NewDetail(first, "Second one"));
+        StudentCode.DetailsOf(StudentCode.Find(first, Alpha)!, nav)
+            .Add(StudentCode.NewDetail(first, "Only one"));
+
+        using (var db = StudentCode.NewContext(somewhere))
+        {
+            StudentCode.Save(first, db);
+        }
+
+        var reopened = StudentCode.NewRegistry();
+
+        using (var db = StudentCode.NewContext(somewhere))
+        {
+            StudentCode.Load(reopened, db);
+        }
+
+        var back = StudentCode.Find(reopened, Mango);
+        Assert.True(back != null && StudentCode.Count(reopened) == 3,
+            $"Three records were saved and {StudentCode.Count(reopened)} came back. Check 1 "
+            + "covers Save and Load — make it green first.");
+
+        int n = StudentCode.DetailsOf(back!, nav).Count;
+        Assert.True(n != 0,
+            $"\"{Mango}\" was saved with two details, and the next run it has none. The "
+            + "details are in their table. Load never asked for them.\n"
+            + "⚠️ Load reads your record's table, and only that table. EF Core brings each "
+            + "record's details along only when Load asks it to:\n"
+            + $"    db.YourRecords.Include(item => item.{nav.Name}).OrderBy(item => item.Id).ToList()\n"
+            + "Include comes from EF Core, so Registry.cs needs its using line at the top:\n"
+            + "    using Microsoft.EntityFrameworkCore;");
+
+        int alpha = StudentCode.DetailsOf(StudentCode.Find(reopened, Alpha)!, nav).Count;
+        int zebra = StudentCode.DetailsOf(StudentCode.Find(reopened, Zebra)!, nav).Count;
+        Assert.True(n == 2 && alpha == 1 && zebra == 0,
+            $"\"{Mango}\" was saved with 2 details, \"{Alpha}\" with 1 and \"{Zebra}\" with "
+            + $"none, and they came back with {n}, {alpha} and {zebra}. Each record should "
+            + "come back with exactly its own.");
+    }
+
+    // ── Check 4 — the database answers ──────────────────────────────────────
+
+    [Fact]
+    public void Check4_TheDatabaseAnswers()
+    {
+        var somewhere = StudentCode.SomewhereElse("with-details");
+        var nav = Shape(somewhere);
+
+        var first = StudentCode.NewRegistry();
+        foreach (var name in new[] { Mango, Zebra, Alpha })
+        {
+            StudentCode.Add(first, StudentCode.NewItem(first, name));
+        }
+
+        StudentCode.DetailsOf(StudentCode.Find(first, Mango)!, nav)
+            .Add(StudentCode.NewDetail(first, "First one"));
+        StudentCode.DetailsOf(StudentCode.Find(first, Alpha)!, nav)
+            .Add(StudentCode.NewDetail(first, "Only one"));
+
+        using (var db = StudentCode.NewContext(somewhere))
+        {
+            StudentCode.Save(first, db);
+        }
+
+        // A registry holding NOTHING asks the question, so the answer can only
+        // come from the table.
+        var empty = StudentCode.NewRegistry();
+        List<string> answer;
+
+        using (var db = StudentCode.NewContext(somewhere))
+        {
+            answer = StudentCode.WithDetails(empty, db);
+        }
+
+        Assert.True(answer.Count != 0,
+            $"\"{Mango}\" and \"{Alpha}\" both have details, and WithDetails handed back "
+            + "nothing.\n"
+            + "⚠️ This check asks a registry with NOTHING in its list. If WithDetails looks at "
+            + "your list, there is nothing there. The question goes to the database:\n"
+            + "    return db.YourRecords\n"
+            + $"        .Where(item => item.{nav.Name}.Any())\n"
+            + "        .OrderBy(item => item.Name)\n"
+            + "        .Select(item => item.Name)\n"
+            + "        .ToList();");
+
+        Assert.True(!answer.Contains(Zebra),
+            $"WithDetails handed back {string.Join(", ", answer)}, and \"{Zebra}\" has no "
+            + "details. Keep only the records that have at least one:\n"
+            + $"    .Where(item => item.{nav.Name}.Any())");
+
+        Assert.True(answer.Count == 2 && answer.Contains(Mango) && answer.Contains(Alpha),
+            $"WithDetails handed back {string.Join(", ", answer)}. It should hand back the "
+            + $"names of the two records with details: {Alpha}, {Mango}. Select the property "
+            + "that holds the name NewItem was given.");
+
+        Assert.True(answer[0] == Alpha,
+            $"WithDetails handed back {string.Join(", ", answer)}, and it should be in order "
+            + $"by name: {Alpha}, {Mango}.\n"
+            + "    .OrderBy(item => item.Name)");
+    }
+
+    // Check 2's shape, or a blocked message pointing at it.
+    private static Microsoft.EntityFrameworkCore.Metadata.INavigation Shape(object somewhere)
+    {
+        try
+        {
+            using var db = StudentCode.NewContext(somewhere);
+            return StudentCode.DetailsNavigation(db);
+        }
+        catch (Xunit.Sdk.XunitException)
+        {
+            throw new Xunit.Sdk.XunitException(
+                "🚧 blocked — this check needs records that hold a list of details, and "
+                + "your project doesn't have that yet.\n"
+                + "👉 Next: check 2 first. It is Task 1.");
         }
     }
 

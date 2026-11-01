@@ -1,9 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 public class ProjectContext : DbContext
 {
     public DbSet<BallPark> BallParks { get; set; }
+    public DbSet<Game> Games { get; set; }
 
     public ProjectContext()
     {
@@ -26,5 +29,6 @@ public class ProjectContext : DbContext
             .Build();
 
         options.UseSqlServer(config["ConnectionStrings:Project"]);
+        options.LogTo(Console.WriteLine, LogLevel.Information, DbContextLoggerOptions.None);
     }
 }

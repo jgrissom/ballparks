@@ -39,4 +39,6 @@ public class BallPark : IListed
     public string Kind => "BALLPARK";
 
     public string Line() => $"{Name} - {Team} - visits {GamesSeen}";
+
+    public List<Game> Games { get; private set; } = new List<Game>();
 }

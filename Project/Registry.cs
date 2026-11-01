@@ -1,5 +1,6 @@
 // Project/Registry.cs
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 
 public class Registry : IListed
 {
@@ -8,6 +9,7 @@ public class Registry : IListed
     public static string Topic => "Collection of baseball parks";     // ← yours, in words
 
     public BallPark NewItem(string name) => new BallPark(name);
+    public Game NewDetail(string opponentName) => new Game(opponentName);
 
     public void Add(BallPark item)
     {
@@ -67,7 +69,7 @@ public class Registry : IListed
 
     public void Load(ProjectContext db)
     {
-        List<BallPark> loaded = db.BallParks.OrderBy(item => item.Id).ToList();
+        List<BallPark> loaded = db.BallParks.Include(item => item.Games).OrderBy(item => item.Id).ToList();
 
         if (loaded.Count == 0)
         {
@@ -77,6 +79,11 @@ public class Registry : IListed
         _ballParks.Clear();
 
         _ballParks.AddRange(loaded);
+    }
+
+    public List<string> WithDetails(ProjectContext db)
+    {
+        return db.BallParks.Where(item => item.Games.Any()).OrderBy(item => item.Name).Select(item => item.Name).ToList();
     }
 
     public string Kind => "REGISTRY";

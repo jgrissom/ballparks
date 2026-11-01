@@ -136,4 +136,24 @@ public class RegistryTests
         Assert.Equal(1, reopened.Count);
         Assert.Null(reopened.Find("Fenway Park"));
     }
+
+    [Fact]
+    public void Week12_DetailsComeBack()
+    {
+        DbContextOptions<ProjectContext> options = new DbContextOptionsBuilder<ProjectContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        Registry registry = new Registry();
+        BallPark record = registry.NewItem("Wrigley Field");
+        record.Games.Add(registry.NewDetail("Brewers"));
+        record.Games.Add(registry.NewDetail("Rays"));
+        registry.Add(record);
+        registry.Save(new ProjectContext(options));
+
+        Registry reopened = new Registry();
+        reopened.Load(new ProjectContext(options));
+
+        Assert.Equal(2, reopened.Find("Wrigley Field")!.Games.Count);
+    }
 }
