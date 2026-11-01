@@ -15,8 +15,8 @@
 //  That is the whole trick, and it is why NewItem has to be there even
 //  though your program barely uses it. It is the door.
 //
-//  ⚠️ NEW THIS WEEK: a second dictated class name, and a new signature
-//  on two members you already have:
+//  Since week 10 there is a second dictated class name, and Save and Load
+//  take it:
 //
 //      public class ProjectContext : DbContext
 //      public void Save(ProjectContext db)
@@ -25,6 +25,16 @@
 //  The context is handed IN, never made inside Registry — which is what lets
 //  these checks hand your registry a table that lives in the test run
 //  rather than the one on the college's server.
+//
+//  ⚠️ NEW THIS WEEK: two more members on Registry, for your second table:
+//
+//      public YourDetail NewDetail(string name)
+//      public List<string> WithDetails(ProjectContext db)
+//
+//  NewDetail is the door to your second table, the way NewItem is the door
+//  to the first: whatever type it hands back is YOUR detail type. And the
+//  property on your record that holds the list of them is read off EF Core's
+//  own model of your classes — the relationship you declared — never guessed.
 //
 //  ⭐ Notice what these checks do NOT do: they never look for a property
 //  called Name. They cannot — yours might be Corner or Title or Elevation.
@@ -58,13 +68,15 @@ internal static class StudentCode
         + "        public void Add(Lighthouse item) { _items.Add(item); }\n"
         + "        public int Count => _items.Count;\n"
         + "        public List<Lighthouse> All() { return new List<Lighthouse>(_items); }\n"
-        + "        public void Save(string path) { ... }      // week 8\n"
-        + "        public void Load(string path) { ... }      // week 8\n"
+        + "        public void Save(ProjectContext db) { ... }   // week 10\n"
+        + "        public void Load(ProjectContext db) { ... }   // week 10\n"
         + "        public List<string> Names() { ... }        // week 9\n"
         + "        public List<Lighthouse> Sorted() { ... }   // week 9\n"
         + "        public List<Lighthouse> Matching(string term) { ... }   // week 9\n"
+        + "        public Keeper NewDetail(string name) => new Keeper(name);   // week 12\n"
+        + "        public List<string> WithDetails(ProjectContext db) { ... }   // week 12\n"
         + "    }\n"
-        + "Lighthouse is my example. Yours is whatever your topic is made of.\n"
+        + "Lighthouse and Keeper are my example. Yours are whatever your topic is made of.\n"
         + "(Find, Remove, Kind, Line and Everything are there too, from weeks 5 and 6.)\n";
 
     internal static Type RegistryType()
@@ -788,6 +800,114 @@ internal static class StudentCode
     {
         var wanted = typeof(List<>).MakeGenericType(ItemType());
         return AskList("Matching", registry, wanted, term).Cast<object?>().ToList();
+    }
+
+    // ── week 12 ────────────────────────────────────────────────────────────
+    // The second table. Found the same way as the first: NewDetail's return
+    // type is your detail type, whatever you called it.
+
+    internal static Type DetailType() => RequireMethod("NewDetail", typeof(string)).ReturnType;
+
+    internal static object NewDetail(object registry, string name)
+    {
+        var method = RequireMethod("NewDetail", typeof(string));
+        object? made;
+        try
+        {
+            made = method.Invoke(registry, new object?[] { name });
+        }
+        catch (TargetInvocationException e) when (e.InnerException != null)
+        {
+            throw new Xunit.Sdk.XunitException(
+                $"Registry.NewDetail(\"{name}\") threw {e.InnerException.GetType().Name} "
+                + $"instead of handing back a detail:\n    {e.InnerException.Message}\n"
+                + "NewDetail has to work for any ordinary name, the same as NewItem.");
+        }
+
+        Assert.True(made != null,
+            "Registry.NewDetail(...) handed back null instead of one of your details.\n"
+            + "    public Keeper NewDetail(string name) => new Keeper(name);");
+
+        return made!;
+    }
+
+    // The relationship, read off EF Core's model of your classes. Building the
+    // model reads your classes; it opens no connection.
+    internal static Microsoft.EntityFrameworkCore.Metadata.INavigation DetailsNavigation(object context)
+    {
+        var item = ItemType();
+        var detail = DetailType();
+
+        Assert.True(detail != item,
+            $"NewDetail hands back a {item.Name}, the same type NewItem does. A detail is a "
+            + "class of its own — the second half of \"each one of my ___ has many ___\":\n"
+            + "    public Keeper NewDetail(string name) => new Keeper(name);");
+
+        Assert.True(detail.Name != "YourDetail",
+            "Your detail class is still called YourDetail — the placeholder from the "
+            + "homework's shape. Name it after the second blank in your sentence, \"each one "
+            + "of my ___ has many ___\": a lighthouse registry's is Keeper.\n"
+            + "👉 Next: rename the class, its file, NewDetail's return type and the list, "
+            + "then run `dotnet ef migrations add` again.");
+
+        Assert.True(detail.IsClass && detail != typeof(string),
+            $"NewDetail hands back a {Pretty(detail)}. It has to hand back one of your own "
+            + "classes, the one each record has many of.");
+
+        var record = TheTable(context);
+        var model = record.Model;
+
+        var nav = record.GetNavigations()
+            .FirstOrDefault(n => n.IsCollection && n.TargetEntityType.ClrType == detail);
+
+        Assert.True(nav != null,
+            $"{item.Name} has no list of {detail.Name}s, so there is nothing tying a "
+            + $"{detail.Name} to the {item.Name} it belongs to.\n"
+            + "⚠️ One record has many details, so the record holds a list of them:\n"
+            + $"    public List<{detail.Name}> {detail.Name}s {{ get; private set; }} = new List<{detail.Name}>();\n"
+            + $"👉 Next: put it in your {item.Name} class.");
+
+        var table = model.FindEntityType(detail);
+        var key = table?.FindPrimaryKey();
+        Assert.True(key != null && key.Properties.Count == 1 && key.Properties[0].Name == "Id",
+            $"{detail.Name} has no Id, so its table can't tell one row from the next:\n"
+            + "    public int Id { get; set; }\n"
+            + $"👉 Next: put it at the top of your {detail.Name} class.");
+
+        return nav!;
+    }
+
+    // The list on one of your records, read through the property EF Core found.
+    internal static System.Collections.IList DetailsOf(object record,
+        Microsoft.EntityFrameworkCore.Metadata.INavigation nav)
+    {
+        var list = nav.PropertyInfo?.GetValue(record) as System.Collections.IList;
+
+        Assert.True(list != null,
+            $"{record.GetType().Name}.{nav.Name} is null on a brand-new record. Start the "
+            + "list empty, so there is always something to add to:\n"
+            + $"    = new List<{DetailType().Name}>();");
+
+        return list!;
+    }
+
+    // Does any migration leave behind a model that has your detail type in it?
+    internal static bool AMigrationMakes(Type type)
+    {
+        return ItemType().Assembly.GetTypes()
+            .Where(t => !t.IsAbstract
+                        && typeof(Microsoft.EntityFrameworkCore.Migrations.Migration).IsAssignableFrom(t))
+            .Any(t =>
+            {
+                var migration = (Microsoft.EntityFrameworkCore.Migrations.Migration)Activator.CreateInstance(t)!;
+                return migration.TargetModel?.FindEntityType(type.FullName!) != null;
+            });
+    }
+
+    internal static List<string> WithDetails(object registry, object context)
+    {
+        var list = AskList("WithDetails", registry, typeof(List<string>), context);
+        return list.Cast<string?>().Select(s => s ?? "(null)").ToList();
     }
 
     // A scratch file of this check's own, deleted first so a previous run
