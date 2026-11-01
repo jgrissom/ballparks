@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 public class ProjectContext : DbContext
 {
     public DbSet<BallPark> BallParks { get; set; }
+    public DbSet<Game> Games { get; set; }
 
     public ProjectContext()
     {

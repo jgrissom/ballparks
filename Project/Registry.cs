@@ -8,6 +8,7 @@ public class Registry : IListed
     public static string Topic => "Collection of baseball parks";     // ← yours, in words
 
     public BallPark NewItem(string name) => new BallPark(name);
+    public Game NewDetail(string opponentName) => new Game(opponentName);
 
     public void Add(BallPark item)
     {

@@ -32,6 +32,13 @@ foreach (IListed thing in registry.Everything())
     Console.WriteLine($"{thing.Kind,-12}{thing.Line()}");
 }
 
+BallPark? withDetails = registry.Find("Wrigley Field");
+
+if (withDetails != null)
+{
+    withDetails.Games.Add(registry.NewDetail("Brewers"));
+    Console.WriteLine($"{withDetails.Games.Count} details on file for that record.");
+}
 registry.Save(db);
 Console.WriteLine($"{registry.Count} on file, saved to the database.");
 
