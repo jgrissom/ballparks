@@ -26,7 +26,18 @@
 //  these checks hand your registry a table that lives in the test run
 //  rather than the one on the college's server.
 //
-//  ⚠️ NEW THIS WEEK: two more members on Registry, for your second table:
+//  ⚠️ NEW THIS WEEK: one more member on Registry, and a second class whose
+//  name and shape are dictated, because the checks have to call it:
+//
+//      public int Import(string path)                  // on Registry
+//
+//      public static class RegistryDesk
+//      {
+//          public static void Remove(Registry registry)
+//          public static void Import(Registry registry)
+//      }
+//
+//  Last week added two members on Registry, for your second table:
 //
 //      public YourDetail NewDetail(string name)
 //      public List<string> WithDetails(ProjectContext db)
@@ -49,6 +60,7 @@
 // ═══════════════════════════════════════════════════════════════════
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 
 namespace Project.Checks;
 
@@ -75,9 +87,176 @@ internal static class StudentCode
         + "        public List<Lighthouse> Matching(string term) { ... }   // week 9\n"
         + "        public Keeper NewDetail(string name) => new Keeper(name);   // week 12\n"
         + "        public List<string> WithDetails(ProjectContext db) { ... }   // week 12\n"
+        + "        public int Import(string path) { ... }   // week 13\n"
         + "    }\n"
         + "Lighthouse and Keeper are my example. Yours are whatever your topic is made of.\n"
         + "(Find, Remove, Kind, Line and Everything are there too, from weeks 5 and 6.)\n";
+
+    // ── week 13 ────────────────────────────────────────────────────────────
+
+    internal static string FileHolding(string json)
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"project-check-{Guid.NewGuid()}.json");
+        File.WriteAllText(path, json);
+        return path;
+    }
+
+    private static MethodInfo ImportMethod()
+    {
+        var method = RequireMethod("Import", typeof(string));
+
+        Assert.True(method.ReturnType == typeof(int),
+            $"Registry.Import hands back a {method.ReturnType.Name}, and it has to hand back "
+            + "an int, how many records were new:\n"
+            + "    public int Import(string path)");
+
+        return method;
+    }
+
+    internal static int Import(object registry, string path)
+    {
+        try
+        {
+            return (int)ImportMethod().Invoke(registry, new object?[] { path })!;
+        }
+        catch (TargetInvocationException e) when (e.InnerException != null)
+        {
+            throw new Xunit.Sdk.XunitException(
+                $"Registry.Import threw {e.InnerException.GetType().Name} on a good file:\n"
+                + $"    {e.InnerException.Message}\n"
+                + "The file held a JSON list of three names, and nothing was wrong with it.");
+        }
+    }
+
+    // What Import threw, or null when it didn't throw.
+    internal static Exception? ImportThrows(object registry, string path)
+    {
+        try
+        {
+            ImportMethod().Invoke(registry, new object?[] { path });
+            return null;
+        }
+        catch (TargetInvocationException e) when (e.InnerException != null)
+        {
+            return e.InnerException;
+        }
+    }
+
+    private static MethodInfo DeskMethod(string name)
+    {
+        var desk = TheProject.GetTypes().FirstOrDefault(t => t.Name == "RegistryDesk");
+
+        Assert.True(desk != null,
+            "I can't find a class called RegistryDesk in your Project. The homework's Task 1 "
+            + "makes it:\n"
+            + "    public static class RegistryDesk\n"
+            + "    {\n"
+            + "        public static void Remove(Registry registry)\n"
+            + "        public static void Import(Registry registry)\n"
+            + "    }\n"
+            + "👉 Next: make Project/RegistryDesk.cs.");
+
+        var method = desk!.GetMethod(name, BindingFlags.Public | BindingFlags.Static,
+            new[] { RegistryType() });
+
+        Assert.True(method != null,
+            $"RegistryDesk has no public static method {name}(Registry registry). The name, "
+            + "the static and the one parameter are all dictated, because I call it.\n"
+            + $"    public static void {name}(Registry registry)");
+
+        return method!;
+    }
+
+    internal static void DeskRemove(object registry) =>
+        Invoke(DeskMethod("Remove"), registry);
+
+    internal static void DeskImport(object registry) =>
+        Invoke(DeskMethod("Import"), registry);
+
+    private static void Invoke(MethodInfo method, object registry)
+    {
+        try
+        {
+            method.Invoke(null, new[] { registry });
+        }
+        catch (TargetInvocationException e) when (e.InnerException != null)
+        {
+            ExceptionDispatchInfo.Capture(e.InnerException).Throw();
+        }
+    }
+
+    // Runs a desk method with these lines typed at it. A loop that never ends
+    // on the end of the input would hang the run, so it gets ten seconds.
+    internal static void TypeAt(string what, string[] lines, Action desk)
+    {
+        TextReader keyboard = Console.In;
+        Console.SetIn(new StringReader(string.Join("\n", lines) + "\n"));
+
+        try
+        {
+            Exception? crash = null;
+            Task run = Task.Run(() =>
+            {
+                try { desk(); }
+                catch (Exception e) { crash = e; }
+            });
+
+            Assert.True(run.Wait(TimeSpan.FromSeconds(10)),
+                $"{what} was still going after ten seconds, with its input used up.\n"
+                + "⚠️ When the input ends, Console.ReadLine() hands back null. A loop has to "
+                + "leave on that, the same as on Enter:\n"
+                + "    if (string.IsNullOrWhiteSpace(typed))\n"
+                + "    {\n"
+                + "        return;\n"
+                + "    }");
+
+            if (crash is Xunit.Sdk.XunitException)
+            {
+                ExceptionDispatchInfo.Capture(crash).Throw();
+            }
+
+            if (crash != null)
+            {
+                throw new Xunit.Sdk.XunitException(
+                    $"{what} crashed with {crash.GetType().Name}:\n"
+                    + $"    {crash.Message}\n"
+                    + "That is the stack dump the person at the keyboard would have seen. A desk "
+                    + "method catches what it can answer.\n"
+                    + "👉 Next: run your program and do the same thing by hand.");
+            }
+        }
+        finally
+        {
+            Console.SetIn(keyboard);
+        }
+    }
+
+    // Your project's own source, without comments or migrations, found by
+    // walking up from here.
+    internal static string ProjectSource()
+    {
+        DirectoryInfo? folder = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (folder != null && !File.Exists(Path.Combine(folder.FullName, "Project", "Project.csproj")))
+        {
+            folder = folder.Parent;
+        }
+
+        Assert.True(folder != null,
+            "I can't find Project/Project.csproj above this test run. Run this from the top "
+            + "of your project repo, with Project and Project.Checks side by side.");
+
+        string project = Path.Combine(folder!.FullName, "Project");
+
+        IEnumerable<string> lines = Directory.GetFiles(project, "*.cs", SearchOption.AllDirectories)
+            .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}Migrations{Path.DirectorySeparatorChar}")
+                        && !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
+                        && !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
+            .SelectMany(File.ReadAllLines)
+            .Where(line => !line.TrimStart().StartsWith("//"));
+
+        return string.Join("\n", lines);
+    }
 
     internal static Type RegistryType()
     {
