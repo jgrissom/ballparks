@@ -1,7 +1,14 @@
 ﻿// Project/Program.cs — swap Thing for your record's name, and Visit for your verb
+using Microsoft.EntityFrameworkCore;
+
 var registry = new Registry();
 
 ProjectContext db = new ProjectContext();
+if (!db.Database.CanConnect())
+{
+    Console.WriteLine("Failed to connect to your database");
+    return;
+}
 
 registry.Add(new BallPark("Wrigley Field", "Cubs", 41649));
 registry.Add(new BallPark("Fenway Park", "Red Sox", 37755));
@@ -33,7 +40,16 @@ if (withDetails != null)
     Console.WriteLine($"{withDetails.Games.Count} details on file for that record.");
 }
 RegistryDesk.Import(registry);
-registry.Save(db);
+try
+{
+    registry.Save(db);
+}
+catch (DbUpdateException)
+{
+    Console.WriteLine("A record this run was holding has gone from its table, so nothing was saved.");
+    Console.WriteLine("Run the program again to pick up from what's there.");
+    return;
+}
 Console.WriteLine($"With details: {string.Join(", ", registry.WithDetails(db))}");
 Console.WriteLine($"{registry.Count} on file, saved to the database.");
 
