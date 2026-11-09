@@ -29,6 +29,6 @@ public class ProjectContext : DbContext
             .Build();
 
         options.UseSqlServer(config["ConnectionStrings:Project"]);
-        options.LogTo(Console.WriteLine, LogLevel.Information, DbContextLoggerOptions.None);
+        // options.LogTo(Console.WriteLine, LogLevel.Information, DbContextLoggerOptions.None);
     }
 }

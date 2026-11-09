@@ -81,6 +81,21 @@ public class Registry : IListed
         _ballParks.AddRange(loaded);
     }
 
+    public int Import(string path)
+    {
+        string json = File.ReadAllText(path);
+        List<string> names = JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+
+        int before = Count;
+
+        foreach (string name in names)
+        {
+            Add(NewItem(name));
+        }
+
+        return Count - before;
+    }
+
     public List<string> WithDetails(ProjectContext db)
     {
         return db.BallParks.Where(item => item.Games.Any()).OrderBy(item => item.Name).Select(item => item.Name).ToList();

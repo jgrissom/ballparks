@@ -17,14 +17,7 @@ if (known != null)
     known.Visit();
 }
 
-Console.Write("Take one off the books (Enter to skip): ");
-string? name = Console.ReadLine();
-if (!string.IsNullOrWhiteSpace(name))
-{
-    Console.WriteLine(registry.Remove(name) ? "Removed." : "Nothing by that name.");
-}
-
-Console.WriteLine();
+RegistryDesk.Remove(registry);
 
 // One loop. It knows about exactly one thing, and that thing is not a class.
 foreach (IListed thing in registry.Everything())
@@ -39,6 +32,7 @@ if (withDetails != null)
     withDetails.Games.Add(registry.NewDetail("Brewers"));
     Console.WriteLine($"{withDetails.Games.Count} details on file for that record.");
 }
+RegistryDesk.Import(registry);
 registry.Save(db);
 Console.WriteLine($"With details: {string.Join(", ", registry.WithDetails(db))}");
 Console.WriteLine($"{registry.Count} on file, saved to the database.");
