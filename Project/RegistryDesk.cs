@@ -48,6 +48,11 @@ public static class RegistryDesk
                 Console.WriteLine("Refused: that file is damaged. Nothing was added.");
                 return;
             }
+            catch (InvalidDataException problem)
+            {
+                Console.WriteLine($"Refused: {problem.Message} Nothing was added.");
+                return;
+            }
         }
     }
 }

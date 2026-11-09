@@ -86,6 +86,14 @@ public class Registry : IListed
         string json = File.ReadAllText(path);
         List<string> names = JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
 
+        foreach (string name in names)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new InvalidDataException("The file has a blank name in it.");
+            }
+        }
+
         int before = Count;
 
         foreach (string name in names)
