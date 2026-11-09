@@ -5,12 +5,11 @@
 //  Run them from the top of your PROJECT repo — the other window:
 //      dotnet test Project.Checks
 //
-//  FOUR checks this week.
+//  FIVE checks this week.
 //
-//  CHECK 1 is everything weeks 4 through 11 built — the database and a
-//  record that stays removed included — and it is green before you start.
-//  Checks 2 to 4 are this week's: each record has many details, the details
-//  come back with their record, and the database answers a question.
+//  CHECK 1 is everything weeks 4 through 12 built, and it is green before
+//  you start. Checks 2 to 5 are this week's: ask again, catch it at the
+//  desk, a bad file adds nothing, and stop in a sentence.
 //
 //  ⚠️ ⚠️ NOT ONE OF THESE CHECKS TOUCHES A DATABASE. Every one of them
 //  hands your context somewhere else to keep its rows — a table that
@@ -20,10 +19,15 @@
 //  Running your program is what tells you that, and it is the only thing
 //  that does.
 //
+//  ⚠️ Checks 2 and 3 type at your RegistryDesk for you, and look at your
+//  registry afterward. Check 5 reads your source, because nothing can call
+//  the top of a program.
+//
 //  ⚠️ Nothing in here knows a single thing about YOUR record's property
 //  names. Read StudentCode.cs if you want to see how.
 // ═══════════════════════════════════════════════════════════════════
 using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace Project.Checks;
 
@@ -53,7 +57,7 @@ public class ProjectChecks
     private const string Mango = "Mango Lane";
 
     [Fact] // green before you start, and it has to STAY green
-    public void Check1_WeeksFourToElevenStillHold()
+    public void Check1_WeeksFourToTwelveStillHold()
     {
         var type = StudentCode.ItemType();
 
@@ -182,9 +186,28 @@ public class ProjectChecks
         // ── week 11: a removed record stays gone ──
 
         Still11("check 2 — a removed record stays gone", Week11_ARemovedRecordStaysGone);
+
+        // ── week 12: each record has many details ──
+
+        Still12("check 2 — each record has many details", Week12_EachRecordHasManyDetails);
+        Still12("check 3 — the details come back", Week12_TheDetailsComeBack);
+        Still12("check 4 — the database answers", Week12_TheDatabaseAnswers);
     }
 
     // A week-11 check, run again. If it fails, say whose it was.
+    private static void Still12(string which, Action check)
+    {
+        try
+        {
+            check();
+        }
+        catch (Xunit.Sdk.XunitException e)
+        {
+            throw new Xunit.Sdk.XunitException(
+                $"This was week 12's {which}, and it still has to hold:\n{e.Message}");
+        }
+    }
+
     private static void Still11(string which, Action check)
     {
         try
@@ -561,10 +584,9 @@ public class ProjectChecks
         }
     }
 
-    // ── Check 2 — each record has many details ───────────────────────────────
+    // ── week 12's three, carried forward ─────────────────────────────────────
 
-    [Fact]
-    public void Check2_EachRecordHasManyDetails()
+    private static void Week12_EachRecordHasManyDetails()
     {
         var registry = StudentCode.NewRegistry();
         var detail = StudentCode.DetailType();
@@ -600,8 +622,7 @@ public class ProjectChecks
 
     // ── Check 3 — the details come back with their record ───────────────────
 
-    [Fact]
-    public void Check3_TheDetailsComeBack()
+    private static void Week12_TheDetailsComeBack()
     {
         var somewhere = StudentCode.SomewhereElse("details-back");
         var nav = Shape(somewhere);
@@ -655,8 +676,7 @@ public class ProjectChecks
 
     // ── Check 4 — the database answers ──────────────────────────────────────
 
-    [Fact]
-    public void Check4_TheDatabaseAnswers()
+    private static void Week12_TheDatabaseAnswers()
     {
         var somewhere = StudentCode.SomewhereElse("with-details");
         var nav = Shape(somewhere);
@@ -714,6 +734,137 @@ public class ProjectChecks
             + "    .OrderBy(item => item.Name)");
     }
 
+    // ── Check 2 — Task 1: ask again ──────────────────────────────────────────
+
+    [Fact]
+    public void Check2_AWrongNameAsksAgain()
+    {
+        var registry = StudentCode.NewRegistry();
+        StudentCode.Add(registry, StudentCode.NewItem(registry, Mango));
+        StudentCode.Add(registry, StudentCode.NewItem(registry, Alpha));
+        StudentCode.Add(registry, StudentCode.NewItem(registry, Zebra));
+
+        StudentCode.TypeAt("RegistryDesk.Remove", new[] { "Nobody By That Name", Mango, Zebra },
+            () => StudentCode.DeskRemove(registry));
+
+        Assert.True(StudentCode.Find(registry, Mango) == null,
+            $"I typed a name nobody has, then \"{Mango}\", and \"{Mango}\" is still on file. "
+            + "The prompt stopped listening after the first answer.\n"
+            + "A wrong name should ask again: a while (true) around the prompt, leaving with "
+            + "return when a record comes off.\n"
+            + "👉 Next: Task 1.");
+
+        Assert.True(StudentCode.Find(registry, Zebra) != null,
+            $"I typed a wrong name, then \"{Mango}\", then \"{Zebra}\", and both came off. Once a "
+            + "record is removed the prompt is done: return right after saying so, or the loop "
+            + "asks again.");
+
+        StudentCode.TypeAt("RegistryDesk.Remove", new[] { "", Alpha },
+            () => StudentCode.DeskRemove(registry));
+
+        Assert.True(StudentCode.Find(registry, Alpha) != null,
+            "I pressed Enter at the prompt, and a record came off anyway. Enter means give up: "
+            + "leave the loop before anything is removed.\n"
+            + "    if (string.IsNullOrWhiteSpace(typed))\n"
+            + "    {\n"
+            + "        return;\n"
+            + "    }");
+    }
+
+    // ── Check 3 — Task 2: catch it at the desk ───────────────────────────────
+
+    [Fact]
+    public void Check3_TheDeskCatchesABadFile()
+    {
+        var registry = StudentCode.NewRegistry();
+        StudentCode.Add(registry, StudentCode.NewItem(registry, Mango));
+
+        string good = StudentCode.FileHolding($"[ \"{Mango}\", \"{Zebra}\", \"{Alpha}\" ]");
+
+        int added = StudentCode.Import(registry, good);
+
+        Assert.True(added == 2,
+            $"Registry.Import read three names, one of them already on file, and said {added}. "
+            + "It should say 2: it hands back how many were NEW.\n"
+            + "👉 Next: Task 2.");
+
+        var asked = StudentCode.NewRegistry();
+        string nowhere = Path.Combine(Path.GetTempPath(), $"project-check-{Guid.NewGuid()}.json");
+
+        StudentCode.TypeAt("RegistryDesk.Import", new[] { nowhere, good },
+            () => StudentCode.DeskImport(asked));
+
+        Assert.True(StudentCode.Count(asked) == 3,
+            $"I typed a path with no file at it, then a good file, and {StudentCode.Count(asked)} "
+            + "records are on file. There should be 3.\n"
+            + "A wrong path is the person's to fix, so it should ask again: the prompt and the "
+            + "try both go inside a while (true).\n"
+            + "👉 Next: Task 2.");
+
+        var refused = StudentCode.NewRegistry();
+        string damaged = StudentCode.FileHolding($"[ \"{Mango}\", \"Zeb");
+
+        StudentCode.TypeAt("RegistryDesk.Import", new[] { damaged, good },
+            () => StudentCode.DeskImport(refused));
+
+        Assert.True(StudentCode.Count(refused) == 0,
+            $"I typed a damaged file, then a good one, and {StudentCode.Count(refused)} records "
+            + "are on file. There should be none.\n"
+            + "Typing a damaged file's name again can't fix it, so the desk says so and stops "
+            + "asking, with return in the catch for JsonException.\n"
+            + "👉 Next: Task 2.");
+    }
+
+    // ── Check 4 — Task 3: a bad file adds nothing ────────────────────────────
+
+    [Fact]
+    public void Check4_ABadFileAddsNothing()
+    {
+        var registry = StudentCode.NewRegistry();
+        string bad = StudentCode.FileHolding($"[ \"{Mango}\", \"{Zebra}\", \"\" ]");
+
+        Exception? thrown = StudentCode.ImportThrows(registry, bad);
+
+        Assert.True(thrown != null,
+            "Registry.Import read a file with a blank name in it and threw nothing. A file "
+            + "has nobody to ask, so Import refuses out loud:\n"
+            + "    throw new InvalidDataException(\"The file has a blank name in it.\");\n"
+            + "👉 Next: Task 3.");
+
+        Assert.True(thrown is InvalidDataException,
+            $"Registry.Import threw {thrown!.GetType().Name} for a blank name, and it should "
+            + "throw InvalidDataException.");
+
+        Assert.True(StudentCode.Count(registry) == 0,
+            $"Registry.Import threw, and {StudentCode.Count(registry)} records got on file "
+            + "ahead of the blank name. A bad file adds NOTHING: one loop checks every name, "
+            + "and only then does a second loop add them.");
+
+        StudentCode.TypeAt("RegistryDesk.Import", new[] { bad },
+            () => StudentCode.DeskImport(registry));
+    }
+
+    // ── Check 5 — Task 4: stop in a sentence ─────────────────────────────────
+
+    [Fact]
+    public void Check5_TheProgramStopsInASentence()
+    {
+        string source = StudentCode.ProjectSource();
+
+        Assert.True(Regex.IsMatch(source, @"CanConnect\s*\("),
+            "Your program never asks whether the database is there, so with the wifi off the "
+            + "first thing anybody sees is a stack dump.\n"
+            + "    if (!db.Database.CanConnect())\n"
+            + "👉 Next: Task 4.");
+
+        Assert.True(Regex.IsMatch(source, @"catch\s*\(\s*(Microsoft\.EntityFrameworkCore\.)?(DbUpdateException|DbUpdateConcurrencyException)\b"),
+            "Your program has no catch for a row that has gone from its table.\n"
+            + "    catch (DbUpdateException)\n"
+            + "around registry.Save(db);, saying what happened, then return. I read your "
+            + "source for this one, because nothing can call the top of a program.\n"
+            + "👉 Next: Task 4.");
+    }
+
     // Check 2's shape, or a blocked message pointing at it.
     private static Microsoft.EntityFrameworkCore.Metadata.INavigation Shape(object somewhere)
     {
@@ -727,7 +878,7 @@ public class ProjectChecks
             throw new Xunit.Sdk.XunitException(
                 "🚧 blocked — this check needs records that hold a list of details, and "
                 + "your project doesn't have that yet.\n"
-                + "👉 Next: check 2 first. It is Task 1.");
+                + "👉 Next: last week's Task 1.");
         }
     }
 
