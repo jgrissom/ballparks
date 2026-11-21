@@ -14,7 +14,7 @@ public static class RegistryDesk
             }
             if (registry.Remove(name.Trim()))
             {
-                Console.WriteLine(registry.Remove(name) ? "Removed." : "Nothing by that name.");
+                Console.WriteLine("Removed.");
                 return;
             }
 
