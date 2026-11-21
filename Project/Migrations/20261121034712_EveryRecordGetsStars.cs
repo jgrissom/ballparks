@@ -15,7 +15,7 @@ namespace Project.Migrations
                 table: "BallParks",
                 type: "int",
                 nullable: false,
-                defaultValue: 0);
+                defaultValue: 3);
         }
 
         /// <inheritdoc />
