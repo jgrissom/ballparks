@@ -34,11 +34,27 @@ public class BallPark : IListed
         Name = name;
         Team = team;
         Capacity = capacity;
+        Added = DateTime.Now;
     }
 
     public string Kind => "BALLPARK";
 
-    public string Line() => $"{Name} - {Team} - visits {GamesSeen}";
+    public string Line() => $"{Name} - {Team} - visits {GamesSeen} - added {AddedOn()}, {Stars} stars";
 
     public List<Game> Games { get; private set; } = new List<Game>();
+
+    public DateTime? Added { get; private set; }
+    public string AddedOn()
+    {
+        if (Added == null)
+        {
+            return "-";
+        }
+        else
+        {
+            return Added.Value.ToString("yyyy-MM-dd");
+        }
+    }
+
+    public int Stars { get; set; } = 3;
 }
