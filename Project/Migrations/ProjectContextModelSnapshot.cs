@@ -42,6 +42,9 @@ namespace Project.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("Stars")
+                        .HasColumnType("int");
+
                     b.Property<string>("Team")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");

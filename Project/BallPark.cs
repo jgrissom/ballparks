@@ -39,7 +39,7 @@ public class BallPark : IListed
 
     public string Kind => "BALLPARK";
 
-    public string Line() => $"{Name} - {Team} - visits {GamesSeen} - added {AddedOn()}";
+    public string Line() => $"{Name} - {Team} - visits {GamesSeen} - added {AddedOn()}, {Stars} stars";
 
     public List<Game> Games { get; private set; } = new List<Game>();
 
@@ -55,4 +55,6 @@ public class BallPark : IListed
             return Added.Value.ToString("yyyy-MM-dd");
         }
     }
+
+    public int Stars { get; set; } = 3;
 }
